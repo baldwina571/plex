@@ -1,0 +1,98 @@
+<html>
+<head>
+<title>core.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #b4c2f0;}
+.s4 { color: #baacff;}
+.s5 { color: #64d1a9;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+core.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># -*- coding: utf-8 -*-</span>
+
+<span class="s0">&quot;&quot;&quot; 
+certifi.py 
+~~~~~~~~~~ 
+ 
+This module returns the installation location of cacert.pem or its contents. 
+&quot;&quot;&quot;</span>
+<span class="s2">import </span><span class="s1">os</span>
+
+
+<span class="s2">class </span><span class="s1">_PipPatchedCertificate</span><span class="s3">(</span><span class="s1">Exception</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">pass</span>
+
+
+<span class="s2">try</span><span class="s4">:</span>
+    <span class="s0"># Return a certificate file on disk for a standalone pip zipapp running in</span>
+    <span class="s0"># an isolated build environment to use. Passing --cert to the standalone</span>
+    <span class="s0"># pip does not work since requests calls where() unconditionally on import.</span>
+    <span class="s1">_PIP_STANDALONE_CERT </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s5">&quot;_PIP_STANDALONE_CERT&quot;</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">_PIP_STANDALONE_CERT</span><span class="s4">:</span>
+        <span class="s2">def </span><span class="s1">where</span><span class="s3">()</span><span class="s4">:</span>
+            <span class="s2">return </span><span class="s1">_PIP_STANDALONE_CERT</span>
+        <span class="s2">raise </span><span class="s1">_PipPatchedCertificate</span><span class="s3">()</span>
+
+    <span class="s2">from </span><span class="s1">importlib</span><span class="s3">.</span><span class="s1">resources </span><span class="s2">import </span><span class="s1">path </span><span class="s2">as </span><span class="s1">get_path</span><span class="s3">, </span><span class="s1">read_text</span>
+
+    <span class="s1">_CACERT_CTX </span><span class="s4">= </span><span class="s2">None</span>
+    <span class="s1">_CACERT_PATH </span><span class="s4">= </span><span class="s2">None</span>
+
+    <span class="s2">def </span><span class="s1">where</span><span class="s3">()</span><span class="s4">:</span>
+        <span class="s0"># This is slightly terrible, but we want to delay extracting the file</span>
+        <span class="s0"># in cases where we're inside of a zipimport situation until someone</span>
+        <span class="s0"># actually calls where(), but we don't want to re-extract the file</span>
+        <span class="s0"># on every call of where(), so we'll do it once then store it in a</span>
+        <span class="s0"># global variable.</span>
+        <span class="s2">global </span><span class="s1">_CACERT_CTX</span>
+        <span class="s2">global </span><span class="s1">_CACERT_PATH</span>
+        <span class="s2">if </span><span class="s1">_CACERT_PATH </span><span class="s2">is None</span><span class="s4">:</span>
+            <span class="s0"># This is slightly janky, the importlib.resources API wants you to</span>
+            <span class="s0"># manage the cleanup of this file, so it doesn't actually return a</span>
+            <span class="s0"># path, it returns a context manager that will give you the path</span>
+            <span class="s0"># when you enter it and will do any cleanup when you leave it. In</span>
+            <span class="s0"># the common case of not needing a temporary file, it will just</span>
+            <span class="s0"># return the file system location and the __exit__() is a no-op.</span>
+            <span class="s0">#</span>
+            <span class="s0"># We also have to hold onto the actual context manager, because</span>
+            <span class="s0"># it will do the cleanup whenever it gets garbage collected, so</span>
+            <span class="s0"># we will also store that at the global level as well.</span>
+            <span class="s1">_CACERT_CTX </span><span class="s4">= </span><span class="s1">get_path</span><span class="s3">(</span><span class="s5">&quot;pip._vendor.certifi&quot;</span><span class="s3">, </span><span class="s5">&quot;cacert.pem&quot;</span><span class="s3">)</span>
+            <span class="s1">_CACERT_PATH </span><span class="s4">= </span><span class="s1">str</span><span class="s3">(</span><span class="s1">_CACERT_CTX</span><span class="s3">.</span><span class="s1">__enter__</span><span class="s3">())</span>
+
+        <span class="s2">return </span><span class="s1">_CACERT_PATH</span>
+
+<span class="s2">except </span><span class="s1">_PipPatchedCertificate</span><span class="s4">:</span>
+    <span class="s2">pass</span>
+
+<span class="s2">except </span><span class="s1">ImportError</span><span class="s4">:</span>
+    <span class="s0"># This fallback will work for Python versions prior to 3.7 that lack the</span>
+    <span class="s0"># importlib.resources module but relies on the existing `where` function</span>
+    <span class="s0"># so won't address issues with environments like PyOxidizer that don't set</span>
+    <span class="s0"># __file__ on modules.</span>
+    <span class="s2">def </span><span class="s1">read_text</span><span class="s3">(</span><span class="s1">_module</span><span class="s3">, </span><span class="s1">_path</span><span class="s3">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">&quot;ascii&quot;</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s2">with </span><span class="s1">open</span><span class="s3">(</span><span class="s1">where</span><span class="s3">(), </span><span class="s5">&quot;r&quot;</span><span class="s3">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s1">encoding</span><span class="s3">) </span><span class="s2">as </span><span class="s1">data</span><span class="s4">:</span>
+            <span class="s2">return </span><span class="s1">data</span><span class="s3">.</span><span class="s1">read</span><span class="s3">()</span>
+
+    <span class="s0"># If we don't have importlib.resources, then we will just do the old logic</span>
+    <span class="s0"># of assuming we're on the filesystem and munge the path directly.</span>
+    <span class="s2">def </span><span class="s1">where</span><span class="s3">()</span><span class="s4">:</span>
+        <span class="s1">f </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">dirname</span><span class="s3">(</span><span class="s1">__file__</span><span class="s3">)</span>
+
+        <span class="s2">return </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">f</span><span class="s3">, </span><span class="s5">&quot;cacert.pem&quot;</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">contents</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s2">return </span><span class="s1">read_text</span><span class="s3">(</span><span class="s5">&quot;certifi&quot;</span><span class="s3">, </span><span class="s5">&quot;cacert.pem&quot;</span><span class="s3">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">&quot;ascii&quot;</span><span class="s3">)</span>
+</pre>
+</body>
+</html>

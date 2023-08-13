@@ -1,0 +1,115 @@
+<html>
+<head>
+<title>meta.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #baacff;}
+.s4 { color: #b4c2f0;}
+.s5 { color: #7fdaff;}
+.s6 { color: #64d1a9;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+meta.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Build metadata for a project using PEP 517 hooks. 
+&quot;&quot;&quot;</span>
+<span class="s2">import </span><span class="s1">argparse</span>
+<span class="s2">import </span><span class="s1">logging</span>
+<span class="s2">import </span><span class="s1">os</span>
+<span class="s2">import </span><span class="s1">shutil</span>
+<span class="s2">import </span><span class="s1">functools</span>
+
+<span class="s2">try</span><span class="s3">:</span>
+    <span class="s2">import </span><span class="s1">importlib</span><span class="s4">.</span><span class="s1">metadata </span><span class="s2">as </span><span class="s1">imp_meta</span>
+<span class="s2">except </span><span class="s1">ImportError</span><span class="s3">:</span>
+    <span class="s2">import </span><span class="s1">importlib_metadata </span><span class="s2">as </span><span class="s1">imp_meta</span>
+
+<span class="s2">try</span><span class="s3">:</span>
+    <span class="s2">from </span><span class="s1">zipfile </span><span class="s2">import </span><span class="s1">Path</span>
+<span class="s2">except </span><span class="s1">ImportError</span><span class="s3">:</span>
+    <span class="s2">from </span><span class="s1">zipp </span><span class="s2">import </span><span class="s1">Path</span>
+
+<span class="s2">from </span><span class="s4">.</span><span class="s1">envbuild </span><span class="s2">import </span><span class="s1">BuildEnvironment</span>
+<span class="s2">from </span><span class="s4">.</span><span class="s1">wrappers </span><span class="s2">import </span><span class="s1">Pep517HookCaller</span><span class="s4">, </span><span class="s1">quiet_subprocess_runner</span>
+<span class="s2">from </span><span class="s4">.</span><span class="s1">dirtools </span><span class="s2">import </span><span class="s1">tempdir</span><span class="s4">, </span><span class="s1">mkdir_p</span><span class="s4">, </span><span class="s1">dir_to_zipfile</span>
+<span class="s2">from </span><span class="s4">.</span><span class="s1">build </span><span class="s2">import </span><span class="s1">validate_system</span><span class="s4">, </span><span class="s1">load_system</span><span class="s4">, </span><span class="s1">compat_system</span>
+
+<span class="s1">log </span><span class="s3">= </span><span class="s1">logging</span><span class="s4">.</span><span class="s1">getLogger</span><span class="s4">(</span><span class="s1">__name__</span><span class="s4">)</span>
+
+
+<span class="s2">def </span><span class="s1">_prep_meta</span><span class="s4">(</span><span class="s1">hooks</span><span class="s4">, </span><span class="s1">env</span><span class="s4">, </span><span class="s1">dest</span><span class="s4">)</span><span class="s3">:</span>
+    <span class="s1">reqs </span><span class="s3">= </span><span class="s1">hooks</span><span class="s4">.</span><span class="s1">get_requires_for_build_wheel</span><span class="s4">(</span><span class="s5">{}</span><span class="s4">)</span>
+    <span class="s1">log</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s6">'Got build requires: %s'</span><span class="s4">, </span><span class="s1">reqs</span><span class="s4">)</span>
+
+    <span class="s1">env</span><span class="s4">.</span><span class="s1">pip_install</span><span class="s4">(</span><span class="s1">reqs</span><span class="s4">)</span>
+    <span class="s1">log</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s6">'Installed dynamic build dependencies'</span><span class="s4">)</span>
+
+    <span class="s2">with </span><span class="s1">tempdir</span><span class="s4">() </span><span class="s2">as </span><span class="s1">td</span><span class="s3">:</span>
+        <span class="s1">log</span><span class="s4">.</span><span class="s1">info</span><span class="s4">(</span><span class="s6">'Trying to build metadata in %s'</span><span class="s4">, </span><span class="s1">td</span><span class="s4">)</span>
+        <span class="s1">filename </span><span class="s3">= </span><span class="s1">hooks</span><span class="s4">.</span><span class="s1">prepare_metadata_for_build_wheel</span><span class="s4">(</span><span class="s1">td</span><span class="s4">, </span><span class="s5">{}</span><span class="s4">)</span>
+        <span class="s1">source </span><span class="s3">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">td</span><span class="s4">, </span><span class="s1">filename</span><span class="s4">)</span>
+        <span class="s1">shutil</span><span class="s4">.</span><span class="s1">move</span><span class="s4">(</span><span class="s1">source</span><span class="s4">, </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">dest</span><span class="s4">, </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">basename</span><span class="s4">(</span><span class="s1">filename</span><span class="s4">)))</span>
+
+
+<span class="s2">def </span><span class="s1">build</span><span class="s4">(</span><span class="s1">source_dir</span><span class="s3">=</span><span class="s6">'.'</span><span class="s4">, </span><span class="s1">dest</span><span class="s3">=</span><span class="s2">None</span><span class="s4">, </span><span class="s1">system</span><span class="s3">=</span><span class="s2">None</span><span class="s4">)</span><span class="s3">:</span>
+    <span class="s1">system </span><span class="s3">= </span><span class="s1">system </span><span class="s2">or </span><span class="s1">load_system</span><span class="s4">(</span><span class="s1">source_dir</span><span class="s4">)</span>
+    <span class="s1">dest </span><span class="s3">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">join</span><span class="s4">(</span><span class="s1">source_dir</span><span class="s4">, </span><span class="s1">dest </span><span class="s2">or </span><span class="s6">'dist'</span><span class="s4">)</span>
+    <span class="s1">mkdir_p</span><span class="s4">(</span><span class="s1">dest</span><span class="s4">)</span>
+    <span class="s1">validate_system</span><span class="s4">(</span><span class="s1">system</span><span class="s4">)</span>
+    <span class="s1">hooks </span><span class="s3">= </span><span class="s1">Pep517HookCaller</span><span class="s4">(</span>
+        <span class="s1">source_dir</span><span class="s4">, </span><span class="s1">system</span><span class="s5">[</span><span class="s6">'build-backend'</span><span class="s5">]</span><span class="s4">, </span><span class="s1">system</span><span class="s4">.</span><span class="s1">get</span><span class="s4">(</span><span class="s6">'backend-path'</span><span class="s4">)</span>
+    <span class="s4">)</span>
+
+    <span class="s2">with </span><span class="s1">hooks</span><span class="s4">.</span><span class="s1">subprocess_runner</span><span class="s4">(</span><span class="s1">quiet_subprocess_runner</span><span class="s4">)</span><span class="s3">:</span>
+        <span class="s2">with </span><span class="s1">BuildEnvironment</span><span class="s4">() </span><span class="s2">as </span><span class="s1">env</span><span class="s3">:</span>
+            <span class="s1">env</span><span class="s4">.</span><span class="s1">pip_install</span><span class="s4">(</span><span class="s1">system</span><span class="s5">[</span><span class="s6">'requires'</span><span class="s5">]</span><span class="s4">)</span>
+            <span class="s1">_prep_meta</span><span class="s4">(</span><span class="s1">hooks</span><span class="s4">, </span><span class="s1">env</span><span class="s4">, </span><span class="s1">dest</span><span class="s4">)</span>
+
+
+<span class="s2">def </span><span class="s1">build_as_zip</span><span class="s4">(</span><span class="s1">builder</span><span class="s3">=</span><span class="s1">build</span><span class="s4">)</span><span class="s3">:</span>
+    <span class="s2">with </span><span class="s1">tempdir</span><span class="s4">() </span><span class="s2">as </span><span class="s1">out_dir</span><span class="s3">:</span>
+        <span class="s1">builder</span><span class="s4">(</span><span class="s1">dest</span><span class="s3">=</span><span class="s1">out_dir</span><span class="s4">)</span>
+        <span class="s2">return </span><span class="s1">dir_to_zipfile</span><span class="s4">(</span><span class="s1">out_dir</span><span class="s4">)</span>
+
+
+<span class="s2">def </span><span class="s1">load</span><span class="s4">(</span><span class="s1">root</span><span class="s4">)</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Given a source directory (root) of a package, 
+    return an importlib.metadata.Distribution object 
+    with metadata build from that package. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">root </span><span class="s3">= </span><span class="s1">os</span><span class="s4">.</span><span class="s1">path</span><span class="s4">.</span><span class="s1">expanduser</span><span class="s4">(</span><span class="s1">root</span><span class="s4">)</span>
+    <span class="s1">system </span><span class="s3">= </span><span class="s1">compat_system</span><span class="s4">(</span><span class="s1">root</span><span class="s4">)</span>
+    <span class="s1">builder </span><span class="s3">= </span><span class="s1">functools</span><span class="s4">.</span><span class="s1">partial</span><span class="s4">(</span><span class="s1">build</span><span class="s4">, </span><span class="s1">source_dir</span><span class="s3">=</span><span class="s1">root</span><span class="s4">, </span><span class="s1">system</span><span class="s3">=</span><span class="s1">system</span><span class="s4">)</span>
+    <span class="s1">path </span><span class="s3">= </span><span class="s1">Path</span><span class="s4">(</span><span class="s1">build_as_zip</span><span class="s4">(</span><span class="s1">builder</span><span class="s4">))</span>
+    <span class="s2">return </span><span class="s1">imp_meta</span><span class="s4">.</span><span class="s1">PathDistribution</span><span class="s4">(</span><span class="s1">path</span><span class="s4">)</span>
+
+
+<span class="s1">parser </span><span class="s3">= </span><span class="s1">argparse</span><span class="s4">.</span><span class="s1">ArgumentParser</span><span class="s4">()</span>
+<span class="s1">parser</span><span class="s4">.</span><span class="s1">add_argument</span><span class="s4">(</span>
+    <span class="s6">'source_dir'</span><span class="s4">,</span>
+    <span class="s1">help</span><span class="s3">=</span><span class="s6">&quot;A directory containing pyproject.toml&quot;</span><span class="s4">,</span>
+<span class="s4">)</span>
+<span class="s1">parser</span><span class="s4">.</span><span class="s1">add_argument</span><span class="s4">(</span>
+    <span class="s6">'--out-dir'</span><span class="s4">, </span><span class="s6">'-o'</span><span class="s4">,</span>
+    <span class="s1">help</span><span class="s3">=</span><span class="s6">&quot;Destination in which to save the builds relative to source dir&quot;</span><span class="s4">,</span>
+<span class="s4">)</span>
+
+
+<span class="s2">def </span><span class="s1">main</span><span class="s4">()</span><span class="s3">:</span>
+    <span class="s1">args </span><span class="s3">= </span><span class="s1">parser</span><span class="s4">.</span><span class="s1">parse_args</span><span class="s4">()</span>
+    <span class="s1">build</span><span class="s4">(</span><span class="s1">args</span><span class="s4">.</span><span class="s1">source_dir</span><span class="s4">, </span><span class="s1">args</span><span class="s4">.</span><span class="s1">out_dir</span><span class="s4">)</span>
+
+
+<span class="s2">if </span><span class="s1">__name__ </span><span class="s3">== </span><span class="s6">'__main__'</span><span class="s3">:</span>
+    <span class="s1">main</span><span class="s4">()</span>
+</pre>
+</body>
+</html>

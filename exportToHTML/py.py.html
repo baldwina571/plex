@@ -1,0 +1,90 @@
+<html>
+<head>
+<title>py.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b877db; font-style: italic;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b4c2f0;}
+.s3 { color: #baacff;}
+.s4 { color: #64d1a9;}
+.s5 { color: #ff9668;}
+.s6 { color: #7fdaff;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+py.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span><span class="s2">, </span><span class="s1">division</span><span class="s2">, </span><span class="s1">unicode_literals</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">six </span><span class="s0">import </span><span class="s1">text_type</span>
+
+<span class="s0">from </span><span class="s1">bisect </span><span class="s0">import </span><span class="s1">bisect_left</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">_base </span><span class="s0">import </span><span class="s1">Trie </span><span class="s0">as </span><span class="s1">ABCTrie</span>
+
+
+<span class="s0">class </span><span class="s1">Trie</span><span class="s2">(</span><span class="s1">ABCTrie</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">data</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">if not </span><span class="s1">all</span><span class="s2">(</span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">x</span><span class="s2">, </span><span class="s1">text_type</span><span class="s2">) </span><span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">data</span><span class="s2">.</span><span class="s1">keys</span><span class="s2">())</span><span class="s3">:</span>
+            <span class="s0">raise </span><span class="s1">TypeError</span><span class="s2">(</span><span class="s4">&quot;All keys must be strings&quot;</span><span class="s2">)</span>
+
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_data </span><span class="s3">= </span><span class="s1">data</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_keys </span><span class="s3">= </span><span class="s1">sorted</span><span class="s2">(</span><span class="s1">data</span><span class="s2">.</span><span class="s1">keys</span><span class="s2">())</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_cachestr </span><span class="s3">= </span><span class="s4">&quot;&quot;</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_cachepoints </span><span class="s3">= </span><span class="s2">(</span><span class="s5">0</span><span class="s2">, </span><span class="s1">len</span><span class="s2">(</span><span class="s1">data</span><span class="s2">))</span>
+
+    <span class="s0">def </span><span class="s1">__contains__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">key </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_data</span>
+
+    <span class="s0">def </span><span class="s1">__len__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_data</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__iter__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_data</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__getitem__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_data</span><span class="s6">[</span><span class="s1">key</span><span class="s6">]</span>
+
+    <span class="s0">def </span><span class="s1">keys</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">prefix</span><span class="s3">=</span><span class="s0">None</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">prefix </span><span class="s0">is None or </span><span class="s1">prefix </span><span class="s3">== </span><span class="s4">&quot;&quot; </span><span class="s0">or not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">set</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">prefix</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_cachestr</span><span class="s2">)</span><span class="s3">:</span>
+            <span class="s1">lo</span><span class="s2">, </span><span class="s1">hi </span><span class="s3">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_cachepoints</span>
+            <span class="s1">start </span><span class="s3">= </span><span class="s1">i </span><span class="s3">= </span><span class="s1">bisect_left</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">, </span><span class="s1">lo</span><span class="s2">, </span><span class="s1">hi</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s1">start </span><span class="s3">= </span><span class="s1">i </span><span class="s3">= </span><span class="s1">bisect_left</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">)</span>
+
+        <span class="s1">keys </span><span class="s3">= </span><span class="s1">set</span><span class="s2">()</span>
+        <span class="s0">if </span><span class="s1">start </span><span class="s3">== </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s2">)</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">keys</span>
+
+        <span class="s0">while </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s6">[</span><span class="s1">i</span><span class="s6">]</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">)</span><span class="s3">:</span>
+            <span class="s1">keys</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s6">[</span><span class="s1">i</span><span class="s6">]</span><span class="s2">)</span>
+            <span class="s1">i </span><span class="s3">+= </span><span class="s5">1</span>
+
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_cachestr </span><span class="s3">= </span><span class="s1">prefix</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_cachepoints </span><span class="s3">= </span><span class="s2">(</span><span class="s1">start</span><span class="s2">, </span><span class="s1">i</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s1">keys</span>
+
+    <span class="s0">def </span><span class="s1">has_keys_with_prefix</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">prefix </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_data</span><span class="s3">:</span>
+            <span class="s0">return True</span>
+
+        <span class="s0">if </span><span class="s1">prefix</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_cachestr</span><span class="s2">)</span><span class="s3">:</span>
+            <span class="s1">lo</span><span class="s2">, </span><span class="s1">hi </span><span class="s3">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_cachepoints</span>
+            <span class="s1">i </span><span class="s3">= </span><span class="s1">bisect_left</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">, </span><span class="s1">lo</span><span class="s2">, </span><span class="s1">hi</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s1">i </span><span class="s3">= </span><span class="s1">bisect_left</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">)</span>
+
+        <span class="s0">if </span><span class="s1">i </span><span class="s3">== </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s2">)</span><span class="s3">:</span>
+            <span class="s0">return False</span>
+
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_keys</span><span class="s6">[</span><span class="s1">i</span><span class="s6">]</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

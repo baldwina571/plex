@@ -1,0 +1,107 @@
+<html>
+<head>
+<title>chardetect.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #b4c2f0;}
+.s4 { color: #baacff;}
+.s5 { color: #64d1a9;}
+.s6 { color: #7fdaff;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+chardetect.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+Script which takes one or more file paths and reports on their detected 
+encodings 
+ 
+Example:: 
+ 
+    % chardetect somefile someotherfile 
+    somefile: windows-1252 with confidence 0.5 
+    someotherfile: ascii with confidence 1.0 
+ 
+If no paths are provided, it takes its input from stdin. 
+ 
+&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">absolute_import</span><span class="s3">, </span><span class="s1">print_function</span><span class="s3">, </span><span class="s1">unicode_literals</span>
+
+<span class="s2">import </span><span class="s1">argparse</span>
+<span class="s2">import </span><span class="s1">sys</span>
+
+<span class="s2">from </span><span class="s1">pip</span><span class="s3">.</span><span class="s1">_vendor</span><span class="s3">.</span><span class="s1">chardet </span><span class="s2">import </span><span class="s1">__version__</span>
+<span class="s2">from </span><span class="s1">pip</span><span class="s3">.</span><span class="s1">_vendor</span><span class="s3">.</span><span class="s1">chardet</span><span class="s3">.</span><span class="s1">compat </span><span class="s2">import </span><span class="s1">PY2</span>
+<span class="s2">from </span><span class="s1">pip</span><span class="s3">.</span><span class="s1">_vendor</span><span class="s3">.</span><span class="s1">chardet</span><span class="s3">.</span><span class="s1">universaldetector </span><span class="s2">import </span><span class="s1">UniversalDetector</span>
+
+
+<span class="s2">def </span><span class="s1">description_of</span><span class="s3">(</span><span class="s1">lines</span><span class="s3">, </span><span class="s1">name</span><span class="s4">=</span><span class="s5">'stdin'</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Return a string describing the probable encoding of a file or 
+    list of strings. 
+ 
+    :param lines: The lines to get the encoding of. 
+    :type lines: Iterable of bytes 
+    :param name: Name of file or collection of lines 
+    :type name: str 
+    &quot;&quot;&quot;</span>
+    <span class="s1">u </span><span class="s4">= </span><span class="s1">UniversalDetector</span><span class="s3">()</span>
+    <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">lines</span><span class="s4">:</span>
+        <span class="s1">line </span><span class="s4">= </span><span class="s1">bytearray</span><span class="s3">(</span><span class="s1">line</span><span class="s3">)</span>
+        <span class="s1">u</span><span class="s3">.</span><span class="s1">feed</span><span class="s3">(</span><span class="s1">line</span><span class="s3">)</span>
+        <span class="s0"># shortcut out of the loop to save reading further - particularly useful if we read a BOM.</span>
+        <span class="s2">if </span><span class="s1">u</span><span class="s3">.</span><span class="s1">done</span><span class="s4">:</span>
+            <span class="s2">break</span>
+    <span class="s1">u</span><span class="s3">.</span><span class="s1">close</span><span class="s3">()</span>
+    <span class="s1">result </span><span class="s4">= </span><span class="s1">u</span><span class="s3">.</span><span class="s1">result</span>
+    <span class="s2">if </span><span class="s1">PY2</span><span class="s4">:</span>
+        <span class="s1">name </span><span class="s4">= </span><span class="s1">name</span><span class="s3">.</span><span class="s1">decode</span><span class="s3">(</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">getfilesystemencoding</span><span class="s3">(), </span><span class="s5">'ignore'</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">result</span><span class="s6">[</span><span class="s5">'encoding'</span><span class="s6">]</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s5">'{}: {} with confidence {}'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">name</span><span class="s3">, </span><span class="s1">result</span><span class="s6">[</span><span class="s5">'encoding'</span><span class="s6">]</span><span class="s3">,</span>
+                                                     <span class="s1">result</span><span class="s6">[</span><span class="s5">'confidence'</span><span class="s6">]</span><span class="s3">)</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s5">'{}: no result'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">name</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">main</span><span class="s3">(</span><span class="s1">argv</span><span class="s4">=</span><span class="s2">None</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Handles command line arguments and gets things started. 
+ 
+    :param argv: List of arguments, as if specified on the command-line. 
+                 If None, ``sys.argv[1:]`` is used instead. 
+    :type argv: list of str 
+    &quot;&quot;&quot;</span>
+    <span class="s0"># Get command line arguments</span>
+    <span class="s1">parser </span><span class="s4">= </span><span class="s1">argparse</span><span class="s3">.</span><span class="s1">ArgumentParser</span><span class="s3">(</span>
+        <span class="s1">description</span><span class="s4">=</span><span class="s5">&quot;Takes one or more file paths and reports their detected \ 
+                     encodings&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_argument</span><span class="s3">(</span><span class="s5">'input'</span><span class="s3">,</span>
+                        <span class="s1">help</span><span class="s4">=</span><span class="s5">'File whose encoding we would like to determine. \ 
+                              (default: stdin)'</span><span class="s3">,</span>
+                        <span class="s1">type</span><span class="s4">=</span><span class="s1">argparse</span><span class="s3">.</span><span class="s1">FileType</span><span class="s3">(</span><span class="s5">'rb'</span><span class="s3">), </span><span class="s1">nargs</span><span class="s4">=</span><span class="s5">'*'</span><span class="s3">,</span>
+                        <span class="s1">default</span><span class="s4">=</span><span class="s6">[</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">stdin </span><span class="s2">if </span><span class="s1">PY2 </span><span class="s2">else </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">stdin</span><span class="s3">.</span><span class="s1">buffer</span><span class="s6">]</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_argument</span><span class="s3">(</span><span class="s5">'--version'</span><span class="s3">, </span><span class="s1">action</span><span class="s4">=</span><span class="s5">'version'</span><span class="s3">,</span>
+                        <span class="s1">version</span><span class="s4">=</span><span class="s5">'%(prog)s {}'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">__version__</span><span class="s3">))</span>
+    <span class="s1">args </span><span class="s4">= </span><span class="s1">parser</span><span class="s3">.</span><span class="s1">parse_args</span><span class="s3">(</span><span class="s1">argv</span><span class="s3">)</span>
+
+    <span class="s2">for </span><span class="s1">f </span><span class="s2">in </span><span class="s1">args</span><span class="s3">.</span><span class="s1">input</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">f</span><span class="s3">.</span><span class="s1">isatty</span><span class="s3">()</span><span class="s4">:</span>
+            <span class="s1">print</span><span class="s3">(</span><span class="s5">&quot;You are running chardetect interactively. Press &quot; </span><span class="s4">+</span>
+                  <span class="s5">&quot;CTRL-D twice at the start of a blank line to signal the &quot; </span><span class="s4">+</span>
+                  <span class="s5">&quot;end of your input. If you want help, run chardetect &quot; </span><span class="s4">+</span>
+                  <span class="s5">&quot;--help\n&quot;</span><span class="s3">, </span><span class="s1">file</span><span class="s4">=</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">stderr</span><span class="s3">)</span>
+        <span class="s1">print</span><span class="s3">(</span><span class="s1">description_of</span><span class="s3">(</span><span class="s1">f</span><span class="s3">, </span><span class="s1">f</span><span class="s3">.</span><span class="s1">name</span><span class="s3">))</span>
+
+
+<span class="s2">if </span><span class="s1">__name__ </span><span class="s4">== </span><span class="s5">'__main__'</span><span class="s4">:</span>
+    <span class="s1">main</span><span class="s3">()</span>
+</pre>
+</body>
+</html>

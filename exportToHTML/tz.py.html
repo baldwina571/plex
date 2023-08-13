@@ -1,0 +1,47 @@
+<html>
+<head>
+<title>tz.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b877db; font-style: italic;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b4c2f0;}
+.s3 { color: #baacff;}
+.s4 { color: #64d1a9;}
+.s5 { color: #ff9668;}
+.s6 { color: #7fdaff;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+tz.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">datetime </span><span class="s0">import </span><span class="s1">tzinfo</span><span class="s2">, </span><span class="s1">timedelta</span>
+
+
+<span class="s0">class </span><span class="s1">TomlTz</span><span class="s2">(</span><span class="s1">tzinfo</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">toml_offset</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">toml_offset </span><span class="s3">== </span><span class="s4">&quot;Z&quot;</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_raw_offset </span><span class="s3">= </span><span class="s4">&quot;+00:00&quot;</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">_raw_offset </span><span class="s3">= </span><span class="s1">toml_offset</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_sign </span><span class="s3">= -</span><span class="s5">1 </span><span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_raw_offset</span><span class="s6">[</span><span class="s5">0</span><span class="s6">] </span><span class="s3">== </span><span class="s4">'-' </span><span class="s0">else </span><span class="s5">1</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_hours </span><span class="s3">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_raw_offset</span><span class="s6">[</span><span class="s5">1</span><span class="s3">:</span><span class="s5">3</span><span class="s6">]</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">_minutes </span><span class="s3">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_raw_offset</span><span class="s6">[</span><span class="s5">4</span><span class="s3">:</span><span class="s5">6</span><span class="s6">]</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__deepcopy__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">memo</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">__class__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_raw_offset</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">tzname</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">dt</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s4">&quot;UTC&quot; </span><span class="s3">+ </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_raw_offset</span>
+
+    <span class="s0">def </span><span class="s1">utcoffset</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">dt</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">_sign </span><span class="s3">* </span><span class="s1">timedelta</span><span class="s2">(</span><span class="s1">hours</span><span class="s3">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_hours</span><span class="s2">, </span><span class="s1">minutes</span><span class="s3">=</span><span class="s1">self</span><span class="s2">.</span><span class="s1">_minutes</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">dst</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">dt</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">timedelta</span><span class="s2">(</span><span class="s5">0</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

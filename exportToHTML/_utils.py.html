@@ -1,0 +1,183 @@
+<html>
+<head>
+<title>_utils.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b877db; font-style: italic;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b4c2f0;}
+.s3 { color: #baacff;}
+.s4 { color: #7fdaff;}
+.s5 { color: #64d1a9;}
+.s6 { color: #475f76;}
+.s7 { color: #ff9668;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_utils.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span><span class="s2">, </span><span class="s1">division</span><span class="s2">, </span><span class="s1">unicode_literals</span>
+
+<span class="s0">from </span><span class="s1">types </span><span class="s0">import </span><span class="s1">ModuleType</span>
+
+<span class="s0">try</span><span class="s3">:</span>
+    <span class="s0">from </span><span class="s1">collections</span><span class="s2">.</span><span class="s1">abc </span><span class="s0">import </span><span class="s1">Mapping</span>
+<span class="s0">except </span><span class="s1">ImportError</span><span class="s3">:</span>
+    <span class="s0">from </span><span class="s1">collections </span><span class="s0">import </span><span class="s1">Mapping</span>
+
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">six </span><span class="s0">import </span><span class="s1">text_type</span><span class="s2">, </span><span class="s1">PY3</span>
+
+<span class="s0">if </span><span class="s1">PY3</span><span class="s3">:</span>
+    <span class="s0">import </span><span class="s1">xml</span><span class="s2">.</span><span class="s1">etree</span><span class="s2">.</span><span class="s1">ElementTree </span><span class="s0">as </span><span class="s1">default_etree</span>
+<span class="s0">else</span><span class="s3">:</span>
+    <span class="s0">try</span><span class="s3">:</span>
+        <span class="s0">import </span><span class="s1">xml</span><span class="s2">.</span><span class="s1">etree</span><span class="s2">.</span><span class="s1">cElementTree </span><span class="s0">as </span><span class="s1">default_etree</span>
+    <span class="s0">except </span><span class="s1">ImportError</span><span class="s3">:</span>
+        <span class="s0">import </span><span class="s1">xml</span><span class="s2">.</span><span class="s1">etree</span><span class="s2">.</span><span class="s1">ElementTree </span><span class="s0">as </span><span class="s1">default_etree</span>
+
+
+<span class="s1">__all__ </span><span class="s3">= </span><span class="s4">[</span><span class="s5">&quot;default_etree&quot;</span><span class="s2">, </span><span class="s5">&quot;MethodDispatcher&quot;</span><span class="s2">, </span><span class="s5">&quot;isSurrogatePair&quot;</span><span class="s2">,</span>
+           <span class="s5">&quot;surrogatePairToCodepoint&quot;</span><span class="s2">, </span><span class="s5">&quot;moduleFactoryFactory&quot;</span><span class="s2">,</span>
+           <span class="s5">&quot;supports_lone_surrogates&quot;</span><span class="s4">]</span>
+
+
+<span class="s6"># Platforms not supporting lone surrogates (\uD800-\uDFFF) should be</span>
+<span class="s6"># caught by the below test. In general this would be any platform</span>
+<span class="s6"># using UTF-16 as its encoding of unicode strings, such as</span>
+<span class="s6"># Jython. This is because UTF-16 itself is based on the use of such</span>
+<span class="s6"># surrogates, and there is no mechanism to further escape such</span>
+<span class="s6"># escapes.</span>
+<span class="s0">try</span><span class="s3">:</span>
+    <span class="s1">_x </span><span class="s3">= </span><span class="s1">eval</span><span class="s2">(</span><span class="s5">'&quot;\\uD800&quot;'</span><span class="s2">)  </span><span class="s6"># pylint:disable=eval-used</span>
+    <span class="s0">if not </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">_x</span><span class="s2">, </span><span class="s1">text_type</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s6"># We need this with u&quot;&quot; because of http://bugs.jython.org/issue2039</span>
+        <span class="s1">_x </span><span class="s3">= </span><span class="s1">eval</span><span class="s2">(</span><span class="s5">'u&quot;\\uD800&quot;'</span><span class="s2">)  </span><span class="s6"># pylint:disable=eval-used</span>
+        <span class="s0">assert </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">_x</span><span class="s2">, </span><span class="s1">text_type</span><span class="s2">)</span>
+<span class="s0">except </span><span class="s1">Exception</span><span class="s3">:</span>
+    <span class="s1">supports_lone_surrogates </span><span class="s3">= </span><span class="s0">False</span>
+<span class="s0">else</span><span class="s3">:</span>
+    <span class="s1">supports_lone_surrogates </span><span class="s3">= </span><span class="s0">True</span>
+
+
+<span class="s0">class </span><span class="s1">MethodDispatcher</span><span class="s2">(</span><span class="s1">dict</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s6">&quot;&quot;&quot;Dict with 2 special properties: 
+ 
+    On initiation, keys that are lists, sets or tuples are converted to 
+    multiple keys so accessing any one of the items in the original 
+    list-like object returns the matching value 
+ 
+    md = MethodDispatcher({(&quot;foo&quot;, &quot;bar&quot;):&quot;baz&quot;}) 
+    md[&quot;foo&quot;] == &quot;baz&quot; 
+ 
+    A default value which can be set through the default attribute. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">items</span><span class="s3">=</span><span class="s2">())</span><span class="s3">:</span>
+        <span class="s1">_dictEntries </span><span class="s3">= </span><span class="s4">[]</span>
+        <span class="s0">for </span><span class="s1">name</span><span class="s2">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">items</span><span class="s3">:</span>
+            <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">name</span><span class="s2">, (</span><span class="s1">list</span><span class="s2">, </span><span class="s1">tuple</span><span class="s2">, </span><span class="s1">frozenset</span><span class="s2">, </span><span class="s1">set</span><span class="s2">))</span><span class="s3">:</span>
+                <span class="s0">for </span><span class="s1">item </span><span class="s0">in </span><span class="s1">name</span><span class="s3">:</span>
+                    <span class="s1">_dictEntries</span><span class="s2">.</span><span class="s1">append</span><span class="s2">((</span><span class="s1">item</span><span class="s2">, </span><span class="s1">value</span><span class="s2">))</span>
+            <span class="s0">else</span><span class="s3">:</span>
+                <span class="s1">_dictEntries</span><span class="s2">.</span><span class="s1">append</span><span class="s2">((</span><span class="s1">name</span><span class="s2">, </span><span class="s1">value</span><span class="s2">))</span>
+        <span class="s1">dict</span><span class="s2">.</span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">_dictEntries</span><span class="s2">)</span>
+        <span class="s0">assert </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">) </span><span class="s3">== </span><span class="s1">len</span><span class="s2">(</span><span class="s1">_dictEntries</span><span class="s2">)</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">default </span><span class="s3">= </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">__getitem__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">dict</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">self</span><span class="s2">.</span><span class="s1">default</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__get__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">instance</span><span class="s2">, </span><span class="s1">owner</span><span class="s3">=</span><span class="s0">None</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">BoundMethodDispatcher</span><span class="s2">(</span><span class="s1">instance</span><span class="s2">, </span><span class="s1">self</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">BoundMethodDispatcher</span><span class="s2">(</span><span class="s1">Mapping</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s6">&quot;&quot;&quot;Wraps a MethodDispatcher, binding its return values to `instance`&quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">instance</span><span class="s2">, </span><span class="s1">dispatcher</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">instance </span><span class="s3">= </span><span class="s1">instance</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">dispatcher </span><span class="s3">= </span><span class="s1">dispatcher</span>
+
+    <span class="s0">def </span><span class="s1">__getitem__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s6"># see https://docs.python.org/3/reference/datamodel.html#object.__get__</span>
+        <span class="s6"># on a function, __get__ is used to bind a function to an instance as a bound method</span>
+        <span class="s0">return </span><span class="s1">self</span><span class="s2">.</span><span class="s1">dispatcher</span><span class="s4">[</span><span class="s1">key</span><span class="s4">]</span><span class="s2">.</span><span class="s1">__get__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">instance</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">get</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">default</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">key </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">dispatcher</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">self</span><span class="s4">[</span><span class="s1">key</span><span class="s4">]</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">default</span>
+
+    <span class="s0">def </span><span class="s1">__iter__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">iter</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">dispatcher</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__len__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">len</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">dispatcher</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__contains__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">key </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">dispatcher</span>
+
+
+<span class="s6"># Some utility functions to deal with weirdness around UCS2 vs UCS4</span>
+<span class="s6"># python builds</span>
+
+<span class="s0">def </span><span class="s1">isSurrogatePair</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s0">return </span><span class="s2">(</span><span class="s1">len</span><span class="s2">(</span><span class="s1">data</span><span class="s2">) </span><span class="s3">== </span><span class="s7">2 </span><span class="s0">and</span>
+            <span class="s1">ord</span><span class="s2">(</span><span class="s1">data</span><span class="s4">[</span><span class="s7">0</span><span class="s4">]</span><span class="s2">) </span><span class="s3">&gt;= </span><span class="s7">0xD800 </span><span class="s0">and </span><span class="s1">ord</span><span class="s2">(</span><span class="s1">data</span><span class="s4">[</span><span class="s7">0</span><span class="s4">]</span><span class="s2">) </span><span class="s3">&lt;= </span><span class="s7">0xDBFF </span><span class="s0">and</span>
+            <span class="s1">ord</span><span class="s2">(</span><span class="s1">data</span><span class="s4">[</span><span class="s7">1</span><span class="s4">]</span><span class="s2">) </span><span class="s3">&gt;= </span><span class="s7">0xDC00 </span><span class="s0">and </span><span class="s1">ord</span><span class="s2">(</span><span class="s1">data</span><span class="s4">[</span><span class="s7">1</span><span class="s4">]</span><span class="s2">) </span><span class="s3">&lt;= </span><span class="s7">0xDFFF</span><span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">surrogatePairToCodepoint</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s1">char_val </span><span class="s3">= </span><span class="s2">(</span><span class="s7">0x10000 </span><span class="s3">+ </span><span class="s2">(</span><span class="s1">ord</span><span class="s2">(</span><span class="s1">data</span><span class="s4">[</span><span class="s7">0</span><span class="s4">]</span><span class="s2">) </span><span class="s3">- </span><span class="s7">0xD800</span><span class="s2">) </span><span class="s3">* </span><span class="s7">0x400 </span><span class="s3">+</span>
+                <span class="s2">(</span><span class="s1">ord</span><span class="s2">(</span><span class="s1">data</span><span class="s4">[</span><span class="s7">1</span><span class="s4">]</span><span class="s2">) </span><span class="s3">- </span><span class="s7">0xDC00</span><span class="s2">))</span>
+    <span class="s0">return </span><span class="s1">char_val</span>
+
+<span class="s6"># Module Factory Factory (no, this isn't Java, I know)</span>
+<span class="s6"># Here to stop this being duplicated all over the place.</span>
+
+
+<span class="s0">def </span><span class="s1">moduleFactoryFactory</span><span class="s2">(</span><span class="s1">factory</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s1">moduleCache </span><span class="s3">= </span><span class="s4">{}</span>
+
+    <span class="s0">def </span><span class="s1">moduleFactory</span><span class="s2">(</span><span class="s1">baseModule</span><span class="s2">, </span><span class="s3">*</span><span class="s1">args</span><span class="s2">, </span><span class="s3">**</span><span class="s1">kwargs</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">ModuleType</span><span class="s2">.</span><span class="s1">__name__</span><span class="s2">, </span><span class="s1">type</span><span class="s2">(</span><span class="s5">&quot;&quot;</span><span class="s2">))</span><span class="s3">:</span>
+            <span class="s1">name </span><span class="s3">= </span><span class="s5">&quot;_%s_factory&quot; </span><span class="s3">% </span><span class="s1">baseModule</span><span class="s2">.</span><span class="s1">__name__</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s1">name </span><span class="s3">= </span><span class="s5">b&quot;_%s_factory&quot; </span><span class="s3">% </span><span class="s1">baseModule</span><span class="s2">.</span><span class="s1">__name__</span>
+
+        <span class="s1">kwargs_tuple </span><span class="s3">= </span><span class="s1">tuple</span><span class="s2">(</span><span class="s1">kwargs</span><span class="s2">.</span><span class="s1">items</span><span class="s2">())</span>
+
+        <span class="s0">try</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">moduleCache</span><span class="s4">[</span><span class="s1">name</span><span class="s4">][</span><span class="s1">args</span><span class="s4">][</span><span class="s1">kwargs_tuple</span><span class="s4">]</span>
+        <span class="s0">except </span><span class="s1">KeyError</span><span class="s3">:</span>
+            <span class="s1">mod </span><span class="s3">= </span><span class="s1">ModuleType</span><span class="s2">(</span><span class="s1">name</span><span class="s2">)</span>
+            <span class="s1">objs </span><span class="s3">= </span><span class="s1">factory</span><span class="s2">(</span><span class="s1">baseModule</span><span class="s2">, </span><span class="s3">*</span><span class="s1">args</span><span class="s2">, </span><span class="s3">**</span><span class="s1">kwargs</span><span class="s2">)</span>
+            <span class="s1">mod</span><span class="s2">.</span><span class="s1">__dict__</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span><span class="s1">objs</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s5">&quot;name&quot; </span><span class="s0">not in </span><span class="s1">moduleCache</span><span class="s3">:</span>
+                <span class="s1">moduleCache</span><span class="s4">[</span><span class="s1">name</span><span class="s4">] </span><span class="s3">= </span><span class="s4">{}</span>
+            <span class="s0">if </span><span class="s5">&quot;args&quot; </span><span class="s0">not in </span><span class="s1">moduleCache</span><span class="s4">[</span><span class="s1">name</span><span class="s4">]</span><span class="s3">:</span>
+                <span class="s1">moduleCache</span><span class="s4">[</span><span class="s1">name</span><span class="s4">][</span><span class="s1">args</span><span class="s4">] </span><span class="s3">= </span><span class="s4">{}</span>
+            <span class="s0">if </span><span class="s5">&quot;kwargs&quot; </span><span class="s0">not in </span><span class="s1">moduleCache</span><span class="s4">[</span><span class="s1">name</span><span class="s4">][</span><span class="s1">args</span><span class="s4">]</span><span class="s3">:</span>
+                <span class="s1">moduleCache</span><span class="s4">[</span><span class="s1">name</span><span class="s4">][</span><span class="s1">args</span><span class="s4">][</span><span class="s1">kwargs_tuple</span><span class="s4">] </span><span class="s3">= </span><span class="s4">{}</span>
+            <span class="s1">moduleCache</span><span class="s4">[</span><span class="s1">name</span><span class="s4">][</span><span class="s1">args</span><span class="s4">][</span><span class="s1">kwargs_tuple</span><span class="s4">] </span><span class="s3">= </span><span class="s1">mod</span>
+            <span class="s0">return </span><span class="s1">mod</span>
+
+    <span class="s0">return </span><span class="s1">moduleFactory</span>
+
+
+<span class="s0">def </span><span class="s1">memoize</span><span class="s2">(</span><span class="s1">func</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s1">cache </span><span class="s3">= </span><span class="s4">{}</span>
+
+    <span class="s0">def </span><span class="s1">wrapped</span><span class="s2">(</span><span class="s3">*</span><span class="s1">args</span><span class="s2">, </span><span class="s3">**</span><span class="s1">kwargs</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s1">key </span><span class="s3">= </span><span class="s2">(</span><span class="s1">tuple</span><span class="s2">(</span><span class="s1">args</span><span class="s2">), </span><span class="s1">tuple</span><span class="s2">(</span><span class="s1">kwargs</span><span class="s2">.</span><span class="s1">items</span><span class="s2">()))</span>
+        <span class="s0">if </span><span class="s1">key </span><span class="s0">not in </span><span class="s1">cache</span><span class="s3">:</span>
+            <span class="s1">cache</span><span class="s4">[</span><span class="s1">key</span><span class="s4">] </span><span class="s3">= </span><span class="s1">func</span><span class="s2">(</span><span class="s3">*</span><span class="s1">args</span><span class="s2">, </span><span class="s3">**</span><span class="s1">kwargs</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s1">cache</span><span class="s4">[</span><span class="s1">key</span><span class="s4">]</span>
+
+    <span class="s0">return </span><span class="s1">wrapped</span>
+</pre>
+</body>
+</html>

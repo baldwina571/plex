@@ -1,0 +1,59 @@
+<html>
+<head>
+<title>_appengine_environ.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #b4c2f0;}
+.s4 { color: #baacff;}
+.s5 { color: #7fdaff;}
+.s6 { color: #64d1a9;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_appengine_environ.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+This module provides means to detect the App Engine environment. 
+&quot;&quot;&quot;</span>
+
+<span class="s2">import </span><span class="s1">os</span>
+
+
+<span class="s2">def </span><span class="s1">is_appengine</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s2">return </span><span class="s1">is_local_appengine</span><span class="s3">() </span><span class="s2">or </span><span class="s1">is_prod_appengine</span><span class="s3">()</span>
+
+
+<span class="s2">def </span><span class="s1">is_appengine_sandbox</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot;Reports if the app is running in the first generation sandbox. 
+ 
+    The second generation runtimes are technically still in a sandbox, but it 
+    is much less restrictive, so generally you shouldn't need to check for it. 
+    see https://cloud.google.com/appengine/docs/standard/runtimes 
+    &quot;&quot;&quot;</span>
+    <span class="s2">return </span><span class="s1">is_appengine</span><span class="s3">() </span><span class="s2">and </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s5">[</span><span class="s6">&quot;APPENGINE_RUNTIME&quot;</span><span class="s5">] </span><span class="s4">== </span><span class="s6">&quot;python27&quot;</span>
+
+
+<span class="s2">def </span><span class="s1">is_local_appengine</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s2">return </span><span class="s6">&quot;APPENGINE_RUNTIME&quot; </span><span class="s2">in </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ </span><span class="s2">and </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span>
+        <span class="s6">&quot;SERVER_SOFTWARE&quot;</span><span class="s3">, </span><span class="s6">&quot;&quot;</span>
+    <span class="s3">).</span><span class="s1">startswith</span><span class="s3">(</span><span class="s6">&quot;Development/&quot;</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">is_prod_appengine</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s2">return </span><span class="s6">&quot;APPENGINE_RUNTIME&quot; </span><span class="s2">in </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ </span><span class="s2">and </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span>
+        <span class="s6">&quot;SERVER_SOFTWARE&quot;</span><span class="s3">, </span><span class="s6">&quot;&quot;</span>
+    <span class="s3">).</span><span class="s1">startswith</span><span class="s3">(</span><span class="s6">&quot;Google App Engine/&quot;</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">is_prod_appengine_mvms</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot;Deprecated.&quot;&quot;&quot;</span>
+    <span class="s2">return False</span>
+</pre>
+</body>
+</html>

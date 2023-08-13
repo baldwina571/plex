@@ -1,0 +1,35 @@
+<html>
+<head>
+<title>ordered.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b877db; font-style: italic;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b4c2f0;}
+.s3 { color: #baacff;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ordered.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">collections </span><span class="s0">import </span><span class="s1">OrderedDict</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">toml </span><span class="s0">import </span><span class="s1">TomlEncoder</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">toml </span><span class="s0">import </span><span class="s1">TomlDecoder</span>
+
+
+<span class="s0">class </span><span class="s1">TomlOrderedDecoder</span><span class="s2">(</span><span class="s1">TomlDecoder</span><span class="s2">)</span><span class="s3">:</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s1">super</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__class__</span><span class="s2">, </span><span class="s1">self</span><span class="s2">).</span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">_dict</span><span class="s3">=</span><span class="s1">OrderedDict</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">TomlOrderedEncoder</span><span class="s2">(</span><span class="s1">TomlEncoder</span><span class="s2">)</span><span class="s3">:</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s1">super</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">__class__</span><span class="s2">, </span><span class="s1">self</span><span class="s2">).</span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">_dict</span><span class="s3">=</span><span class="s1">OrderedDict</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

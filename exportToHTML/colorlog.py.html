@@ -1,0 +1,139 @@
+<html>
+<head>
+<title>colorlog.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #baacff;}
+.s4 { color: #b4c2f0;}
+.s5 { color: #64d1a9;}
+.s6 { color: #ff9668;}
+.s7 { color: #7fdaff;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+colorlog.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Nicer log formatting with colours. 
+ 
+Code copied from Tornado, Apache licensed. 
+&quot;&quot;&quot;</span>
+<span class="s0"># Copyright 2012 Facebook</span>
+<span class="s0">#</span>
+<span class="s0"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;); you may</span>
+<span class="s0"># not use this file except in compliance with the License. You may obtain</span>
+<span class="s0"># a copy of the License at</span>
+<span class="s0">#</span>
+<span class="s0"># http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="s0">#</span>
+<span class="s0"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="s0"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS, WITHOUT</span>
+<span class="s0"># WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the</span>
+<span class="s0"># License for the specific language governing permissions and limitations</span>
+<span class="s0"># under the License.</span>
+
+<span class="s2">import </span><span class="s1">logging</span>
+<span class="s2">import </span><span class="s1">sys</span>
+
+<span class="s2">try</span><span class="s3">:</span>
+    <span class="s2">import </span><span class="s1">curses</span>
+<span class="s2">except </span><span class="s1">ImportError</span><span class="s3">:</span>
+    <span class="s1">curses </span><span class="s3">= </span><span class="s2">None</span>
+
+
+<span class="s2">def </span><span class="s1">_stderr_supports_color</span><span class="s4">()</span><span class="s3">:</span>
+    <span class="s1">color </span><span class="s3">= </span><span class="s2">False</span>
+    <span class="s2">if </span><span class="s1">curses </span><span class="s2">and </span><span class="s1">hasattr</span><span class="s4">(</span><span class="s1">sys</span><span class="s4">.</span><span class="s1">stderr</span><span class="s4">, </span><span class="s5">'isatty'</span><span class="s4">) </span><span class="s2">and </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">stderr</span><span class="s4">.</span><span class="s1">isatty</span><span class="s4">()</span><span class="s3">:</span>
+        <span class="s2">try</span><span class="s3">:</span>
+            <span class="s1">curses</span><span class="s4">.</span><span class="s1">setupterm</span><span class="s4">()</span>
+            <span class="s2">if </span><span class="s1">curses</span><span class="s4">.</span><span class="s1">tigetnum</span><span class="s4">(</span><span class="s5">&quot;colors&quot;</span><span class="s4">) </span><span class="s3">&gt; </span><span class="s6">0</span><span class="s3">:</span>
+                <span class="s1">color </span><span class="s3">= </span><span class="s2">True</span>
+        <span class="s2">except </span><span class="s1">Exception</span><span class="s3">:</span>
+            <span class="s2">pass</span>
+    <span class="s2">return </span><span class="s1">color</span>
+
+
+<span class="s2">class </span><span class="s1">LogFormatter</span><span class="s4">(</span><span class="s1">logging</span><span class="s4">.</span><span class="s1">Formatter</span><span class="s4">)</span><span class="s3">:</span>
+    <span class="s0">&quot;&quot;&quot;Log formatter with colour support 
+    &quot;&quot;&quot;</span>
+    <span class="s1">DEFAULT_COLORS </span><span class="s3">= </span><span class="s7">{</span>
+        <span class="s1">logging</span><span class="s4">.</span><span class="s1">INFO</span><span class="s3">: </span><span class="s6">2</span><span class="s4">,  </span><span class="s0"># Green</span>
+        <span class="s1">logging</span><span class="s4">.</span><span class="s1">WARNING</span><span class="s3">: </span><span class="s6">3</span><span class="s4">,  </span><span class="s0"># Yellow</span>
+        <span class="s1">logging</span><span class="s4">.</span><span class="s1">ERROR</span><span class="s3">: </span><span class="s6">1</span><span class="s4">,  </span><span class="s0"># Red</span>
+        <span class="s1">logging</span><span class="s4">.</span><span class="s1">CRITICAL</span><span class="s3">: </span><span class="s6">1</span><span class="s4">,</span>
+    <span class="s7">}</span>
+
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">color</span><span class="s3">=</span><span class="s2">True</span><span class="s4">, </span><span class="s1">datefmt</span><span class="s3">=</span><span class="s2">None</span><span class="s4">)</span><span class="s3">:</span>
+        <span class="s0">r&quot;&quot;&quot; 
+        :arg bool color: Enables color support. 
+        :arg string fmt: Log message format. 
+        It will be applied to the attributes dict of log records. The 
+        text between ``%(color)s`` and ``%(end_color)s`` will be colored 
+        depending on the level if color support is on. 
+        :arg dict colors: color mappings from logging level to terminal color 
+        code 
+        :arg string datefmt: Datetime format. 
+        Used for formatting ``(asctime)`` placeholder in ``prefix_fmt``. 
+        .. versionchanged:: 3.2 
+        Added ``fmt`` and ``datefmt`` arguments. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">logging</span><span class="s4">.</span><span class="s1">Formatter</span><span class="s4">.</span><span class="s1">__init__</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">datefmt</span><span class="s3">=</span><span class="s1">datefmt</span><span class="s4">)</span>
+        <span class="s1">self</span><span class="s4">.</span><span class="s1">_colors </span><span class="s3">= </span><span class="s7">{}</span>
+        <span class="s2">if </span><span class="s1">color </span><span class="s2">and </span><span class="s1">_stderr_supports_color</span><span class="s4">()</span><span class="s3">:</span>
+            <span class="s0"># The curses module has some str/bytes confusion in</span>
+            <span class="s0"># python3. Until version 3.2.3, most methods return</span>
+            <span class="s0"># bytes, but only accept strings. In addition, we want to</span>
+            <span class="s0"># output these strings with the logging module, which</span>
+            <span class="s0"># works with unicode strings. The explicit calls to</span>
+            <span class="s0"># unicode() below are harmless in python2 but will do the</span>
+            <span class="s0"># right conversion in python 3.</span>
+            <span class="s1">fg_color </span><span class="s3">= </span><span class="s4">(</span><span class="s1">curses</span><span class="s4">.</span><span class="s1">tigetstr</span><span class="s4">(</span><span class="s5">&quot;setaf&quot;</span><span class="s4">) </span><span class="s2">or</span>
+                        <span class="s1">curses</span><span class="s4">.</span><span class="s1">tigetstr</span><span class="s4">(</span><span class="s5">&quot;setf&quot;</span><span class="s4">) </span><span class="s2">or </span><span class="s5">&quot;&quot;</span><span class="s4">)</span>
+            <span class="s2">if </span><span class="s4">(</span><span class="s6">3</span><span class="s4">, </span><span class="s6">0</span><span class="s4">) </span><span class="s3">&lt; </span><span class="s1">sys</span><span class="s4">.</span><span class="s1">version_info </span><span class="s3">&lt; </span><span class="s4">(</span><span class="s6">3</span><span class="s4">, </span><span class="s6">2</span><span class="s4">, </span><span class="s6">3</span><span class="s4">)</span><span class="s3">:</span>
+                <span class="s1">fg_color </span><span class="s3">= </span><span class="s1">str</span><span class="s4">(</span><span class="s1">fg_color</span><span class="s4">, </span><span class="s5">&quot;ascii&quot;</span><span class="s4">)</span>
+
+            <span class="s2">for </span><span class="s1">levelno</span><span class="s4">, </span><span class="s1">code </span><span class="s2">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">DEFAULT_COLORS</span><span class="s4">.</span><span class="s1">items</span><span class="s4">()</span><span class="s3">:</span>
+                <span class="s1">self</span><span class="s4">.</span><span class="s1">_colors</span><span class="s7">[</span><span class="s1">levelno</span><span class="s7">] </span><span class="s3">= </span><span class="s1">str</span><span class="s4">(</span>
+                    <span class="s1">curses</span><span class="s4">.</span><span class="s1">tparm</span><span class="s4">(</span><span class="s1">fg_color</span><span class="s4">, </span><span class="s1">code</span><span class="s4">), </span><span class="s5">&quot;ascii&quot;</span><span class="s4">)</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_normal </span><span class="s3">= </span><span class="s1">str</span><span class="s4">(</span><span class="s1">curses</span><span class="s4">.</span><span class="s1">tigetstr</span><span class="s4">(</span><span class="s5">&quot;sgr0&quot;</span><span class="s4">), </span><span class="s5">&quot;ascii&quot;</span><span class="s4">)</span>
+
+            <span class="s1">scr </span><span class="s3">= </span><span class="s1">curses</span><span class="s4">.</span><span class="s1">initscr</span><span class="s4">()</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">termwidth </span><span class="s3">= </span><span class="s1">scr</span><span class="s4">.</span><span class="s1">getmaxyx</span><span class="s4">()</span><span class="s7">[</span><span class="s6">1</span><span class="s7">]</span>
+            <span class="s1">curses</span><span class="s4">.</span><span class="s1">endwin</span><span class="s4">()</span>
+        <span class="s2">else</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">_normal </span><span class="s3">= </span><span class="s5">''</span>
+            <span class="s0"># Default width is usually 80, but too wide is</span>
+            <span class="s0"># worse than too narrow</span>
+            <span class="s1">self</span><span class="s4">.</span><span class="s1">termwidth </span><span class="s3">= </span><span class="s6">70</span>
+
+    <span class="s2">def </span><span class="s1">formatMessage</span><span class="s4">(</span><span class="s1">self</span><span class="s4">, </span><span class="s1">record</span><span class="s4">)</span><span class="s3">:</span>
+        <span class="s1">mlen </span><span class="s3">= </span><span class="s1">len</span><span class="s4">(</span><span class="s1">record</span><span class="s4">.</span><span class="s1">message</span><span class="s4">)</span>
+        <span class="s1">right_text </span><span class="s3">= </span><span class="s5">'{initial}-{name}'</span><span class="s4">.</span><span class="s1">format</span><span class="s4">(</span><span class="s1">initial</span><span class="s3">=</span><span class="s1">record</span><span class="s4">.</span><span class="s1">levelname</span><span class="s7">[</span><span class="s6">0</span><span class="s7">]</span><span class="s4">,</span>
+                                               <span class="s1">name</span><span class="s3">=</span><span class="s1">record</span><span class="s4">.</span><span class="s1">name</span><span class="s4">)</span>
+        <span class="s2">if </span><span class="s1">mlen </span><span class="s3">+ </span><span class="s1">len</span><span class="s4">(</span><span class="s1">right_text</span><span class="s4">) </span><span class="s3">&lt; </span><span class="s1">self</span><span class="s4">.</span><span class="s1">termwidth</span><span class="s3">:</span>
+            <span class="s1">space </span><span class="s3">= </span><span class="s5">' ' </span><span class="s3">* </span><span class="s4">(</span><span class="s1">self</span><span class="s4">.</span><span class="s1">termwidth </span><span class="s3">- </span><span class="s4">(</span><span class="s1">mlen </span><span class="s3">+ </span><span class="s1">len</span><span class="s4">(</span><span class="s1">right_text</span><span class="s4">)))</span>
+        <span class="s2">else</span><span class="s3">:</span>
+            <span class="s1">space </span><span class="s3">= </span><span class="s5">'  '</span>
+
+        <span class="s2">if </span><span class="s1">record</span><span class="s4">.</span><span class="s1">levelno </span><span class="s2">in </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_colors</span><span class="s3">:</span>
+            <span class="s1">start_color </span><span class="s3">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_colors</span><span class="s7">[</span><span class="s1">record</span><span class="s4">.</span><span class="s1">levelno</span><span class="s7">]</span>
+            <span class="s1">end_color </span><span class="s3">= </span><span class="s1">self</span><span class="s4">.</span><span class="s1">_normal</span>
+        <span class="s2">else</span><span class="s3">:</span>
+            <span class="s1">start_color </span><span class="s3">= </span><span class="s1">end_color </span><span class="s3">= </span><span class="s5">''</span>
+
+        <span class="s2">return </span><span class="s1">record</span><span class="s4">.</span><span class="s1">message </span><span class="s3">+ </span><span class="s1">space </span><span class="s3">+ </span><span class="s1">start_color </span><span class="s3">+ </span><span class="s1">right_text </span><span class="s3">+ </span><span class="s1">end_color</span>
+
+
+<span class="s2">def </span><span class="s1">enable_colourful_output</span><span class="s4">(</span><span class="s1">level</span><span class="s3">=</span><span class="s1">logging</span><span class="s4">.</span><span class="s1">INFO</span><span class="s4">)</span><span class="s3">:</span>
+    <span class="s1">handler </span><span class="s3">= </span><span class="s1">logging</span><span class="s4">.</span><span class="s1">StreamHandler</span><span class="s4">()</span>
+    <span class="s1">handler</span><span class="s4">.</span><span class="s1">setFormatter</span><span class="s4">(</span><span class="s1">LogFormatter</span><span class="s4">())</span>
+    <span class="s1">logging</span><span class="s4">.</span><span class="s1">root</span><span class="s4">.</span><span class="s1">addHandler</span><span class="s4">(</span><span class="s1">handler</span><span class="s4">)</span>
+    <span class="s1">logging</span><span class="s4">.</span><span class="s1">root</span><span class="s4">.</span><span class="s1">setLevel</span><span class="s4">(</span><span class="s1">level</span><span class="s4">)</span>
+</pre>
+</body>
+</html>

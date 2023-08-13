@@ -1,0 +1,276 @@
+<html>
+<head>
+<title>paracode</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #b4c2f0;}
+.s4 { color: #7fdaff;}
+.s5 { color: #ff9668;}
+.s6 { color: #baacff;}
+.s7 { color: #64d1a9;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+paracode</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/Users/aaronbaldwin/Desktop/My_scripts/sonarr/venv/bin/python</span>
+
+<span class="s2">import </span><span class="s1">sys</span><span class="s3">, </span><span class="s1">unicodedata</span>
+<span class="s2">from </span><span class="s1">optparse </span><span class="s2">import </span><span class="s1">OptionParser</span>
+
+<span class="s0"># for python2 compatibility, decode from utf-8</span>
+<span class="s2">if </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">version_info</span><span class="s4">[</span><span class="s5">0</span><span class="s4">] </span><span class="s6">&lt; </span><span class="s5">3</span><span class="s6">:</span>
+    <span class="s1">decode </span><span class="s6">= </span><span class="s1">unicode</span>
+    <span class="s1">encode </span><span class="s6">= </span><span class="s2">lambda </span><span class="s1">x</span><span class="s3">, </span><span class="s1">enc</span><span class="s6">: </span><span class="s1">x</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s1">enc</span><span class="s3">)</span>
+<span class="s2">else</span><span class="s6">:</span>
+    <span class="s0"># for python3, the input is already unicode string</span>
+    <span class="s1">decode </span><span class="s6">= </span><span class="s2">lambda </span><span class="s1">x</span><span class="s3">, </span><span class="s1">enc</span><span class="s6">: </span><span class="s1">x</span>
+    <span class="s1">encode </span><span class="s6">= </span><span class="s2">lambda </span><span class="s1">x</span><span class="s3">, </span><span class="s1">enc</span><span class="s6">: </span><span class="s1">x</span>
+
+
+<span class="s1">table_cyrillic </span><span class="s6">= </span><span class="s4">{</span>
+
+<span class="s7">'A' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER A}'</span><span class="s3">,</span>
+<span class="s7">'B' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER VE}'</span><span class="s3">,</span>
+<span class="s7">'C' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER ES}'</span><span class="s3">,</span>
+<span class="s7">'E' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER IE}'</span><span class="s3">,</span>
+<span class="s7">'H' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER EN}'</span><span class="s3">,</span>
+<span class="s7">'I' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER BYELORUSSIAN-UKRAINIAN I}'</span><span class="s3">,</span>
+<span class="s7">'J' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER JE}'</span><span class="s3">,</span>
+<span class="s7">'K' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER KA}'</span><span class="s3">,</span>
+<span class="s7">'M' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER EM}'</span><span class="s3">,</span>
+<span class="s7">'O' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER O}'</span><span class="s3">,</span>
+<span class="s7">'P' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER ER}'</span><span class="s3">,</span>
+<span class="s7">'S' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER DZE}'</span><span class="s3">,</span>
+<span class="s7">'T' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER TE}'</span><span class="s3">,</span>
+<span class="s7">'X' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER HA}'</span><span class="s3">,</span>
+<span class="s7">'Y' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER U}'</span><span class="s3">,</span>
+
+<span class="s7">'a' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER A}'</span><span class="s3">,</span>
+<span class="s7">'c' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER ES}'</span><span class="s3">,</span>
+<span class="s7">'e' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER IE}'</span><span class="s3">,</span>
+<span class="s7">'i' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER BYELORUSSIAN-UKRAINIAN I}'</span><span class="s3">,</span>
+<span class="s7">'j' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER JE}'</span><span class="s3">,</span>
+<span class="s7">'o' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER O}'</span><span class="s3">,</span>
+<span class="s7">'p' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER ER}'</span><span class="s3">,</span>
+<span class="s7">'s' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER DZE}'</span><span class="s3">,</span>
+<span class="s7">'x' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER HA}'</span><span class="s3">,</span>
+<span class="s7">'y' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER U}'</span><span class="s3">,</span>
+
+<span class="s4">}</span>
+
+<span class="s1">table_cyrillic_plus </span><span class="s6">= </span><span class="s4">{</span>
+<span class="s7">'Y' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER STRAIGHT U}'</span><span class="s3">,</span>
+<span class="s7">'h' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC SMALL LETTER SHHA}'</span><span class="s3">,</span>
+<span class="s4">}</span>
+
+<span class="s1">table_greek </span><span class="s6">= </span><span class="s4">{</span>
+<span class="s7">'A' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER ALPHA}'</span><span class="s3">,</span>
+<span class="s7">'B' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER BETA}'</span><span class="s3">,</span>
+<span class="s7">'E' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER EPSILON}'</span><span class="s3">,</span>
+<span class="s7">'H' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER ETA}'</span><span class="s3">,</span>
+<span class="s7">'I' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER IOTA}'</span><span class="s3">,</span>
+<span class="s7">'K' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER KAPPA}'</span><span class="s3">,</span>
+<span class="s7">'M' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER MU}'</span><span class="s3">,</span>
+<span class="s7">'N' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER NU}'</span><span class="s3">,</span>
+<span class="s7">'O' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER OMICRON}'</span><span class="s3">,</span>
+<span class="s7">'P' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER RHO}'</span><span class="s3">,</span>
+<span class="s7">'T' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER TAU}'</span><span class="s3">,</span>
+<span class="s7">'X' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER CHI}'</span><span class="s3">,</span>
+<span class="s7">'Y' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER UPSILON}'</span><span class="s3">,</span>
+<span class="s7">'Z' </span><span class="s6">: </span><span class="s7">u'\N{GREEK CAPITAL LETTER ZETA}'</span><span class="s3">,</span>
+
+<span class="s7">'o' </span><span class="s6">: </span><span class="s7">u'\N{GREEK SMALL LETTER OMICRON}'</span><span class="s3">,</span>
+<span class="s4">}</span>
+
+<span class="s1">table_other </span><span class="s6">= </span><span class="s4">{</span>
+<span class="s7">'!' </span><span class="s6">: </span><span class="s7">u'\N{LATIN LETTER RETROFLEX CLICK}'</span><span class="s3">,</span>
+
+<span class="s7">'O' </span><span class="s6">: </span><span class="s7">u'\N{ARMENIAN CAPITAL LETTER OH}'</span><span class="s3">,</span>
+<span class="s7">'S' </span><span class="s6">: </span><span class="s7">u'\N{ARMENIAN CAPITAL LETTER TIWN}'</span><span class="s3">,</span>
+<span class="s7">'o' </span><span class="s6">: </span><span class="s7">u'\N{ARMENIAN SMALL LETTER OH}'</span><span class="s3">,</span>
+<span class="s7">'n' </span><span class="s6">: </span><span class="s7">u'\N{ARMENIAN SMALL LETTER VO}'</span><span class="s3">,</span>
+<span class="s4">}</span>
+
+<span class="s1">table_cherokee </span><span class="s6">= </span><span class="s4">{</span>
+<span class="s7">'A' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER GO}'</span><span class="s3">,</span>
+<span class="s7">'B' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER YV}'</span><span class="s3">,</span>
+<span class="s7">'C' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER TLI}'</span><span class="s3">,</span>
+<span class="s7">'D' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER A}'</span><span class="s3">,</span>
+<span class="s7">'E' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER GV}'</span><span class="s3">,</span>
+<span class="s7">'G' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER NAH}'</span><span class="s3">,</span>
+<span class="s7">'H' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER MI}'</span><span class="s3">,</span>
+<span class="s7">'J' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER GU}'</span><span class="s3">,</span>
+<span class="s7">'K' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER TSO}'</span><span class="s3">,</span>
+<span class="s7">'L' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER TLE}'</span><span class="s3">,</span>
+<span class="s7">'M' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER LU}'</span><span class="s3">,</span>
+<span class="s7">'P' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER TLV}'</span><span class="s3">,</span>
+<span class="s7">'R' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER SV}'</span><span class="s3">,</span>
+<span class="s7">'S' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER DU}'</span><span class="s3">,</span>
+<span class="s7">'T' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER I}'</span><span class="s3">,</span>
+<span class="s7">'V' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER DO}'</span><span class="s3">,</span>
+<span class="s7">'W' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER LA}'</span><span class="s3">,</span>
+<span class="s7">'Y' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER GI}'</span><span class="s3">,</span>
+<span class="s7">'Z' </span><span class="s6">: </span><span class="s7">u'\N{CHEROKEE LETTER NO}'</span><span class="s3">,</span>
+
+<span class="s4">}</span>
+
+<span class="s1">table_mirror </span><span class="s6">= </span><span class="s4">{</span>
+
+<span class="s7">'A' </span><span class="s6">: </span><span class="s7">u'\N{FOR ALL}'</span><span class="s3">,</span>
+<span class="s7">'B' </span><span class="s6">: </span><span class="s7">u'\N{CANADIAN SYLLABICS CARRIER KHA}'</span><span class="s3">,</span>
+<span class="s7">'C' </span><span class="s6">: </span><span class="s7">u'\N{LATIN CAPITAL LETTER OPEN O}'</span><span class="s3">,</span>
+<span class="s7">'D' </span><span class="s6">: </span><span class="s7">u'\N{CANADIAN SYLLABICS CARRIER PA}'</span><span class="s3">,</span>
+<span class="s7">'E' </span><span class="s6">: </span><span class="s7">u'\N{LATIN CAPITAL LETTER REVERSED E}'</span><span class="s3">,</span>
+<span class="s7">'F' </span><span class="s6">: </span><span class="s7">u'\N{TURNED CAPITAL F}'</span><span class="s3">,</span>
+<span class="s7">'G' </span><span class="s6">: </span><span class="s7">u'\N{TURNED SANS-SERIF CAPITAL G}'</span><span class="s3">,</span>
+<span class="s7">'H' </span><span class="s6">: </span><span class="s7">u'H'</span><span class="s3">,</span>
+<span class="s7">'I' </span><span class="s6">: </span><span class="s7">u'I'</span><span class="s3">,</span>
+<span class="s7">'J' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER LONG S}'</span><span class="s3">,</span>
+<span class="s7">'K' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED K}'</span><span class="s3">, </span><span class="s0"># fixme</span>
+<span class="s7">'L' </span><span class="s6">: </span><span class="s7">u'\N{TURNED SANS-SERIF CAPITAL L}'</span><span class="s3">,</span>
+<span class="s7">'M' </span><span class="s6">: </span><span class="s7">u'W'</span><span class="s3">,</span>
+<span class="s7">'N' </span><span class="s6">: </span><span class="s7">u'N'</span><span class="s3">,</span>
+<span class="s7">'O' </span><span class="s6">: </span><span class="s7">u'O'</span><span class="s3">,</span>
+<span class="s7">'P' </span><span class="s6">: </span><span class="s7">u'\N{CYRILLIC CAPITAL LETTER KOMI DE}'</span><span class="s3">,</span>
+<span class="s7">'R' </span><span class="s6">: </span><span class="s7">u'\N{CANADIAN SYLLABICS TLHO}'</span><span class="s3">,</span>
+<span class="s7">'S' </span><span class="s6">: </span><span class="s7">u'S'</span><span class="s3">,</span>
+<span class="s7">'T' </span><span class="s6">: </span><span class="s7">u'\N{UP TACK}'</span><span class="s3">,</span>
+<span class="s7">'U' </span><span class="s6">: </span><span class="s7">u'\N{ARMENIAN CAPITAL LETTER VO}'</span><span class="s3">,</span>
+<span class="s7">'V' </span><span class="s6">: </span><span class="s7">u'\N{N-ARY LOGICAL AND}'</span><span class="s3">,</span>
+<span class="s7">'W' </span><span class="s6">: </span><span class="s7">u'M'</span><span class="s3">,</span>
+<span class="s7">'X' </span><span class="s6">: </span><span class="s7">u'X'</span><span class="s3">,</span>
+<span class="s7">'Y' </span><span class="s6">: </span><span class="s7">u'\N{TURNED SANS-SERIF CAPITAL Y}'</span><span class="s3">,</span>
+<span class="s7">'Z' </span><span class="s6">: </span><span class="s7">u'Z'</span><span class="s3">,</span>
+
+<span class="s7">'a' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED A}'</span><span class="s3">,</span>
+<span class="s7">'b' </span><span class="s6">: </span><span class="s7">u'q'</span><span class="s3">,</span>
+<span class="s7">'c' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER OPEN O}'</span><span class="s3">,</span>
+<span class="s7">'d' </span><span class="s6">: </span><span class="s7">u'p'</span><span class="s3">,</span>
+<span class="s7">'e' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER SCHWA}'</span><span class="s3">,</span>
+<span class="s7">'f' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER DOTLESS J WITH STROKE}'</span><span class="s3">,</span>
+<span class="s7">'g' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER B WITH HOOK}'</span><span class="s3">,</span>
+<span class="s7">'h' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED H}'</span><span class="s3">,</span>
+<span class="s7">'i' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER DOTLESS I}' </span><span class="s6">+ </span><span class="s7">u'\N{COMBINING DOT BELOW}'</span><span class="s3">,</span>
+<span class="s7">'j' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER LONG S}' </span><span class="s6">+ </span><span class="s7">u'\N{COMBINING DOT BELOW}'</span><span class="s3">,</span>
+<span class="s7">'k' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED K}'</span><span class="s3">,</span>
+<span class="s7">'l' </span><span class="s6">: </span><span class="s7">u'l'</span><span class="s3">,</span>
+<span class="s7">'m' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED M}'</span><span class="s3">,</span>
+<span class="s7">'n' </span><span class="s6">: </span><span class="s7">u'u'</span><span class="s3">,</span>
+<span class="s7">'o' </span><span class="s6">: </span><span class="s7">u'o'</span><span class="s3">,</span>
+<span class="s7">'p' </span><span class="s6">: </span><span class="s7">u'd'</span><span class="s3">,</span>
+<span class="s7">'q' </span><span class="s6">: </span><span class="s7">u'b'</span><span class="s3">,</span>
+<span class="s7">'r' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED R}'</span><span class="s3">,</span>
+<span class="s7">'s' </span><span class="s6">: </span><span class="s7">u's'</span><span class="s3">,</span>
+<span class="s7">'t' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED T}'</span><span class="s3">,</span>
+<span class="s7">'u' </span><span class="s6">: </span><span class="s7">u'n'</span><span class="s3">,</span>
+<span class="s7">'v' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED V}'</span><span class="s3">,</span>
+<span class="s7">'w' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED W}'</span><span class="s3">,</span>
+<span class="s7">'x' </span><span class="s6">: </span><span class="s7">u'x'</span><span class="s3">,</span>
+<span class="s7">'y' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER TURNED Y}'</span><span class="s3">,</span>
+<span class="s7">'z' </span><span class="s6">: </span><span class="s7">u'z'</span><span class="s3">,</span>
+
+<span class="s7">'0' </span><span class="s6">: </span><span class="s7">'0'</span><span class="s3">,</span>
+<span class="s7">'1' </span><span class="s6">: </span><span class="s7">u'I'</span><span class="s3">,</span>
+<span class="s7">'2' </span><span class="s6">: </span><span class="s7">u'\N{INVERTED QUESTION MARK}\N{COMBINING MACRON}'</span><span class="s3">,</span>
+<span class="s7">'3' </span><span class="s6">: </span><span class="s7">u'\N{LATIN CAPITAL LETTER OPEN E}'</span><span class="s3">,</span>
+<span class="s7">'4' </span><span class="s6">: </span><span class="s7">u'\N{LATIN SMALL LETTER LZ DIGRAPH}'</span><span class="s3">,</span>
+<span class="s7">'6' </span><span class="s6">: </span><span class="s7">'9'</span><span class="s3">,</span>
+<span class="s7">'7' </span><span class="s6">: </span><span class="s7">u'\N{LATIN CAPITAL LETTER L WITH STROKE}'</span><span class="s3">,</span>
+<span class="s7">'8' </span><span class="s6">: </span><span class="s7">'8'</span><span class="s3">,</span>
+<span class="s7">'9' </span><span class="s6">: </span><span class="s7">'6'</span><span class="s3">,</span>
+<span class="s7">',' </span><span class="s6">: </span><span class="s7">&quot;'&quot;</span><span class="s3">,</span>
+<span class="s7">&quot;'&quot; </span><span class="s6">: </span><span class="s7">','</span><span class="s3">,</span>
+<span class="s7">'.' </span><span class="s6">: </span><span class="s7">u'\N{DOT ABOVE}'</span><span class="s3">,</span>
+<span class="s7">'?' </span><span class="s6">: </span><span class="s7">u'\N{INVERTED QUESTION MARK}'</span><span class="s3">,</span>
+<span class="s7">'!' </span><span class="s6">: </span><span class="s7">u'\N{INVERTED EXCLAMATION MARK}'</span><span class="s3">,</span>
+
+<span class="s4">}</span>
+
+
+<span class="s1">tables_names </span><span class="s6">= </span><span class="s4">[</span><span class="s7">'cyrillic'</span><span class="s3">, </span><span class="s7">'cyrillic_plus'</span><span class="s3">, </span><span class="s7">'greek'</span><span class="s3">,</span>
+<span class="s7">'other'</span><span class="s3">, </span><span class="s7">'cherokee'</span><span class="s4">]</span>
+
+<span class="s1">table_default </span><span class="s6">= </span><span class="s1">table_cyrillic</span>
+<span class="s1">table_default</span><span class="s3">.</span><span class="s1">update</span><span class="s3">(</span><span class="s1">table_greek</span><span class="s3">)</span>
+
+<span class="s1">table_all</span><span class="s6">=</span><span class="s4">{}</span>
+<span class="s2">for </span><span class="s1">t </span><span class="s2">in </span><span class="s1">tables_names</span><span class="s6">:</span>
+    <span class="s1">table_all</span><span class="s3">.</span><span class="s1">update</span><span class="s3">(</span><span class="s1">globals</span><span class="s3">()</span><span class="s4">[</span><span class="s7">'table_'</span><span class="s6">+</span><span class="s1">t</span><span class="s4">]</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">main</span><span class="s3">()</span><span class="s6">:</span>
+    <span class="s1">parser </span><span class="s6">= </span><span class="s1">OptionParser</span><span class="s3">(</span><span class="s1">usage</span><span class="s6">=</span><span class="s7">&quot;usage: %prog [options]&quot;</span><span class="s3">)</span>
+
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s7">&quot;-t&quot;</span><span class="s3">, </span><span class="s7">&quot;--tables&quot;</span><span class="s3">,</span>
+        <span class="s1">action</span><span class="s6">=</span><span class="s7">&quot;store&quot;</span><span class="s3">, </span><span class="s1">default</span><span class="s6">=</span><span class="s7">'default'</span><span class="s3">, </span><span class="s1">dest</span><span class="s6">=</span><span class="s7">&quot;tables&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s6">=</span><span class="s7">&quot;string&quot;</span><span class="s3">,</span>
+        <span class="s1">help</span><span class="s6">=</span><span class="s7">&quot;&quot;&quot;list of tables to use, separated by a plus sign. 
+    Possible tables are: &quot;&quot;&quot;</span><span class="s6">+</span><span class="s7">'+'</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">tables_names</span><span class="s3">)</span><span class="s6">+</span><span class="s7">&quot;&quot;&quot;  and a special name 'all' to specify 
+    all these tables joined together. 
+    There is another table, 'mirror', that is not selected in 'all'.&quot;&quot;&quot;</span><span class="s3">)</span>
+
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s7">&quot;-r&quot;</span><span class="s3">, </span><span class="s7">&quot;--reverse&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s6">=</span><span class="s7">&quot;count&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s6">=</span><span class="s7">&quot;reverse&quot;</span><span class="s3">,</span>
+          <span class="s1">default</span><span class="s6">=</span><span class="s5">0</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s6">=</span><span class="s7">&quot;Reverse the text after conversion. Best used with the 'mirror' table.&quot;</span><span class="s3">)</span>
+
+    <span class="s3">(</span><span class="s1">options</span><span class="s3">, </span><span class="s1">args</span><span class="s3">) </span><span class="s6">= </span><span class="s1">parser</span><span class="s3">.</span><span class="s1">parse_args</span><span class="s3">()</span>
+
+    <span class="s2">if </span><span class="s1">args</span><span class="s6">:</span>
+        <span class="s1">to_convert </span><span class="s6">= </span><span class="s1">decode</span><span class="s3">(</span><span class="s7">' '</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">args</span><span class="s3">), </span><span class="s7">'utf-8'</span><span class="s3">)</span>
+    <span class="s2">else</span><span class="s6">:</span>
+        <span class="s1">to_convert </span><span class="s6">= </span><span class="s2">None</span>
+
+    <span class="s1">tables </span><span class="s6">= </span><span class="s1">options</span><span class="s3">.</span><span class="s1">tables</span><span class="s3">.</span><span class="s1">split</span><span class="s3">(</span><span class="s7">'+'</span><span class="s3">)</span>
+    <span class="s1">tables </span><span class="s6">= </span><span class="s4">[</span><span class="s7">'table_'</span><span class="s6">+</span><span class="s1">x </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">tables</span><span class="s4">]</span>
+
+    <span class="s1">tables </span><span class="s6">= </span><span class="s4">[</span><span class="s1">globals</span><span class="s3">()</span><span class="s4">[</span><span class="s1">x</span><span class="s4">] </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">tables</span><span class="s4">]</span>
+
+    <span class="s1">table </span><span class="s6">= </span><span class="s4">{}</span>
+    <span class="s2">for </span><span class="s1">t </span><span class="s2">in </span><span class="s1">tables</span><span class="s6">:</span>
+        <span class="s1">table</span><span class="s3">.</span><span class="s1">update</span><span class="s3">(</span><span class="s1">t</span><span class="s3">)</span>
+
+    <span class="s2">def </span><span class="s1">reverse_string</span><span class="s3">(</span><span class="s1">s</span><span class="s3">)</span><span class="s6">:</span>
+        <span class="s1">l </span><span class="s6">= </span><span class="s1">list</span><span class="s3">(</span><span class="s1">s</span><span class="s3">)</span>
+        <span class="s1">l</span><span class="s3">.</span><span class="s1">reverse</span><span class="s3">()</span>
+        <span class="s1">r </span><span class="s6">= </span><span class="s7">''</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">l</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">r</span>
+
+    <span class="s2">def </span><span class="s1">do_convert</span><span class="s3">(</span><span class="s1">s</span><span class="s3">, </span><span class="s1">reverse</span><span class="s6">=</span><span class="s5">0</span><span class="s3">)</span><span class="s6">:</span>
+        <span class="s2">if </span><span class="s1">reverse</span><span class="s6">:</span>
+            <span class="s1">s </span><span class="s6">= </span><span class="s1">reverse_string</span><span class="s3">(</span><span class="s1">s</span><span class="s3">)</span>
+        <span class="s1">l </span><span class="s6">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">normalize</span><span class="s3">(</span><span class="s7">'NFKD'</span><span class="s3">, </span><span class="s1">s</span><span class="s3">)</span>
+        <span class="s1">out </span><span class="s6">= </span><span class="s4">[]</span>
+        <span class="s2">for </span><span class="s1">c </span><span class="s2">in </span><span class="s1">l</span><span class="s6">:</span>
+            <span class="s1">out</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">table</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s1">c</span><span class="s3">, </span><span class="s1">c</span><span class="s3">))</span>
+        <span class="s1">out </span><span class="s6">= </span><span class="s7">''</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">out</span><span class="s3">)</span>
+        <span class="s1">out </span><span class="s6">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">normalize</span><span class="s3">(</span><span class="s7">'NFKC'</span><span class="s3">, </span><span class="s1">out</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">out</span>
+
+    <span class="s2">if not </span><span class="s1">to_convert</span><span class="s6">:</span>
+        <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">reverse</span><span class="s6">:</span>
+            <span class="s1">lines </span><span class="s6">= </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">stdin</span><span class="s3">.</span><span class="s1">readlines</span><span class="s3">()</span>
+            <span class="s1">lines</span><span class="s3">.</span><span class="s1">reverse</span><span class="s3">()</span>
+        <span class="s2">else</span><span class="s6">:</span>
+            <span class="s1">lines </span><span class="s6">= </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">stdin</span>
+
+        <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">lines</span><span class="s6">:</span>
+            <span class="s1">l </span><span class="s6">= </span><span class="s1">decode</span><span class="s3">(</span><span class="s1">line</span><span class="s3">, </span><span class="s7">'utf-8'</span><span class="s3">)</span>
+            <span class="s1">out </span><span class="s6">= </span><span class="s1">do_convert</span><span class="s3">(</span><span class="s1">l</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">reverse</span><span class="s3">)</span>
+            <span class="s1">sys</span><span class="s3">.</span><span class="s1">stdout</span><span class="s3">.</span><span class="s1">write</span><span class="s3">(</span><span class="s1">encode</span><span class="s3">(</span><span class="s1">out</span><span class="s3">, </span><span class="s7">'utf-8'</span><span class="s3">))</span>
+
+    <span class="s2">else</span><span class="s6">:</span>
+        <span class="s1">out </span><span class="s6">= </span><span class="s1">do_convert</span><span class="s3">(</span><span class="s1">to_convert</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">reverse</span><span class="s3">)</span>
+        <span class="s1">sys</span><span class="s3">.</span><span class="s1">stdout</span><span class="s3">.</span><span class="s1">write</span><span class="s3">(</span><span class="s1">encode</span><span class="s3">(</span><span class="s1">out</span><span class="s3">, </span><span class="s7">'utf-8'</span><span class="s3">))</span>
+        <span class="s1">sys</span><span class="s3">.</span><span class="s1">stdout</span><span class="s3">.</span><span class="s1">write</span><span class="s3">(</span><span class="s7">'\n'</span><span class="s3">)</span>
+
+<span class="s2">if </span><span class="s1">__name__ </span><span class="s6">== </span><span class="s7">'__main__'</span><span class="s6">:</span>
+    <span class="s1">main</span><span class="s3">()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<html>
+<head>
+<title>envbuild.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #b4c2f0;}
+.s4 { color: #baacff;}
+.s5 { color: #64d1a9;}
+.s6 { color: #7fdaff;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+envbuild.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Build wheels/sdists by installing build deps to a temporary environment. 
+&quot;&quot;&quot;</span>
+
+<span class="s2">import </span><span class="s1">os</span>
+<span class="s2">import </span><span class="s1">logging</span>
+<span class="s2">from </span><span class="s1">pip</span><span class="s3">.</span><span class="s1">_vendor </span><span class="s2">import </span><span class="s1">toml</span>
+<span class="s2">import </span><span class="s1">shutil</span>
+<span class="s2">from </span><span class="s1">subprocess </span><span class="s2">import </span><span class="s1">check_call</span>
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">from </span><span class="s1">sysconfig </span><span class="s2">import </span><span class="s1">get_paths</span>
+<span class="s2">from </span><span class="s1">tempfile </span><span class="s2">import </span><span class="s1">mkdtemp</span>
+
+<span class="s2">from </span><span class="s3">.</span><span class="s1">wrappers </span><span class="s2">import </span><span class="s1">Pep517HookCaller</span><span class="s3">, </span><span class="s1">LoggerWrapper</span>
+
+<span class="s1">log </span><span class="s4">= </span><span class="s1">logging</span><span class="s3">.</span><span class="s1">getLogger</span><span class="s3">(</span><span class="s1">__name__</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">_load_pyproject</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">with </span><span class="s1">open</span><span class="s3">(</span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">, </span><span class="s5">'pyproject.toml'</span><span class="s3">)) </span><span class="s2">as </span><span class="s1">f</span><span class="s4">:</span>
+        <span class="s1">pyproject_data </span><span class="s4">= </span><span class="s1">toml</span><span class="s3">.</span><span class="s1">load</span><span class="s3">(</span><span class="s1">f</span><span class="s3">)</span>
+    <span class="s1">buildsys </span><span class="s4">= </span><span class="s1">pyproject_data</span><span class="s6">[</span><span class="s5">'build-system'</span><span class="s6">]</span>
+    <span class="s2">return </span><span class="s3">(</span>
+        <span class="s1">buildsys</span><span class="s6">[</span><span class="s5">'requires'</span><span class="s6">]</span><span class="s3">,</span>
+        <span class="s1">buildsys</span><span class="s6">[</span><span class="s5">'build-backend'</span><span class="s6">]</span><span class="s3">,</span>
+        <span class="s1">buildsys</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s5">'backend-path'</span><span class="s3">),</span>
+    <span class="s3">)</span>
+
+
+<span class="s2">class </span><span class="s1">BuildEnvironment</span><span class="s3">(</span><span class="s1">object</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot;Context manager to install build deps in a simple temporary environment 
+ 
+    Based on code I wrote for pip, which is MIT licensed. 
+    &quot;&quot;&quot;</span>
+    <span class="s0"># Copyright (c) 2008-2016 The pip developers (see AUTHORS.txt file)</span>
+    <span class="s0">#</span>
+    <span class="s0"># Permission is hereby granted, free of charge, to any person obtaining</span>
+    <span class="s0"># a copy of this software and associated documentation files (the</span>
+    <span class="s0"># &quot;Software&quot;), to deal in the Software without restriction, including</span>
+    <span class="s0"># without limitation the rights to use, copy, modify, merge, publish,</span>
+    <span class="s0"># distribute, sublicense, and/or sell copies of the Software, and to</span>
+    <span class="s0"># permit persons to whom the Software is furnished to do so, subject to</span>
+    <span class="s0"># the following conditions:</span>
+    <span class="s0">#</span>
+    <span class="s0"># The above copyright notice and this permission notice shall be</span>
+    <span class="s0"># included in all copies or substantial portions of the Software.</span>
+    <span class="s0">#</span>
+    <span class="s0"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,</span>
+    <span class="s0"># EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF</span>
+    <span class="s0"># MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND</span>
+    <span class="s0"># NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE</span>
+    <span class="s0"># LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION</span>
+    <span class="s0"># OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION</span>
+    <span class="s0"># WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</span>
+
+    <span class="s1">path </span><span class="s4">= </span><span class="s2">None</span>
+
+    <span class="s2">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">cleanup</span><span class="s4">=</span><span class="s2">True</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">_cleanup </span><span class="s4">= </span><span class="s1">cleanup</span>
+
+    <span class="s2">def </span><span class="s1">__enter__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">path </span><span class="s4">= </span><span class="s1">mkdtemp</span><span class="s3">(</span><span class="s1">prefix</span><span class="s4">=</span><span class="s5">'pep517-build-env-'</span><span class="s3">)</span>
+        <span class="s1">log</span><span class="s3">.</span><span class="s1">info</span><span class="s3">(</span><span class="s5">'Temporary build environment: %s'</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">path</span><span class="s3">)</span>
+
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">save_path </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s5">'PATH'</span><span class="s3">, </span><span class="s2">None</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">save_pythonpath </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s5">'PYTHONPATH'</span><span class="s3">, </span><span class="s2">None</span><span class="s3">)</span>
+
+        <span class="s1">install_scheme </span><span class="s4">= </span><span class="s5">'nt' </span><span class="s2">if </span><span class="s3">(</span><span class="s1">os</span><span class="s3">.</span><span class="s1">name </span><span class="s4">== </span><span class="s5">'nt'</span><span class="s3">) </span><span class="s2">else </span><span class="s5">'posix_prefix'</span>
+        <span class="s1">install_dirs </span><span class="s4">= </span><span class="s1">get_paths</span><span class="s3">(</span><span class="s1">install_scheme</span><span class="s3">, </span><span class="s1">vars</span><span class="s4">=</span><span class="s6">{</span>
+            <span class="s5">'base'</span><span class="s4">: </span><span class="s1">self</span><span class="s3">.</span><span class="s1">path</span><span class="s3">,</span>
+            <span class="s5">'platbase'</span><span class="s4">: </span><span class="s1">self</span><span class="s3">.</span><span class="s1">path</span><span class="s3">,</span>
+        <span class="s6">}</span><span class="s3">)</span>
+
+        <span class="s1">scripts </span><span class="s4">= </span><span class="s1">install_dirs</span><span class="s6">[</span><span class="s5">'scripts'</span><span class="s6">]</span>
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">save_path</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s6">[</span><span class="s5">'PATH'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">scripts </span><span class="s4">+ </span><span class="s1">os</span><span class="s3">.</span><span class="s1">pathsep </span><span class="s4">+ </span><span class="s1">self</span><span class="s3">.</span><span class="s1">save_path</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s6">[</span><span class="s5">'PATH'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">scripts </span><span class="s4">+ </span><span class="s1">os</span><span class="s3">.</span><span class="s1">pathsep </span><span class="s4">+ </span><span class="s1">os</span><span class="s3">.</span><span class="s1">defpath</span>
+
+        <span class="s2">if </span><span class="s1">install_dirs</span><span class="s6">[</span><span class="s5">'purelib'</span><span class="s6">] </span><span class="s4">== </span><span class="s1">install_dirs</span><span class="s6">[</span><span class="s5">'platlib'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">lib_dirs </span><span class="s4">= </span><span class="s1">install_dirs</span><span class="s6">[</span><span class="s5">'purelib'</span><span class="s6">]</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">lib_dirs </span><span class="s4">= </span><span class="s1">install_dirs</span><span class="s6">[</span><span class="s5">'purelib'</span><span class="s6">] </span><span class="s4">+ </span><span class="s1">os</span><span class="s3">.</span><span class="s1">pathsep </span><span class="s4">+ </span><span class="s1">\</span>
+                <span class="s1">install_dirs</span><span class="s6">[</span><span class="s5">'platlib'</span><span class="s6">]</span>
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">save_pythonpath</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s6">[</span><span class="s5">'PYTHONPATH'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">lib_dirs </span><span class="s4">+ </span><span class="s1">os</span><span class="s3">.</span><span class="s1">pathsep </span><span class="s4">+ </span><span class="s1">\</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">save_pythonpath</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s6">[</span><span class="s5">'PYTHONPATH'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">lib_dirs</span>
+
+        <span class="s2">return </span><span class="s1">self</span>
+
+    <span class="s2">def </span><span class="s1">pip_install</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">reqs</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s0">&quot;&quot;&quot;Install dependencies into this env by calling pip in a subprocess&quot;&quot;&quot;</span>
+        <span class="s2">if not </span><span class="s1">reqs</span><span class="s4">:</span>
+            <span class="s2">return</span>
+        <span class="s1">log</span><span class="s3">.</span><span class="s1">info</span><span class="s3">(</span><span class="s5">'Calling pip to install %s'</span><span class="s3">, </span><span class="s1">reqs</span><span class="s3">)</span>
+        <span class="s1">cmd </span><span class="s4">= </span><span class="s6">[</span>
+            <span class="s1">sys</span><span class="s3">.</span><span class="s1">executable</span><span class="s3">, </span><span class="s5">'-m'</span><span class="s3">, </span><span class="s5">'pip'</span><span class="s3">, </span><span class="s5">'install'</span><span class="s3">, </span><span class="s5">'--ignore-installed'</span><span class="s3">,</span>
+            <span class="s5">'--prefix'</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">path</span><span class="s6">] </span><span class="s4">+ </span><span class="s1">list</span><span class="s3">(</span><span class="s1">reqs</span><span class="s3">)</span>
+        <span class="s1">check_call</span><span class="s3">(</span>
+            <span class="s1">cmd</span><span class="s3">,</span>
+            <span class="s1">stdout</span><span class="s4">=</span><span class="s1">LoggerWrapper</span><span class="s3">(</span><span class="s1">log</span><span class="s3">, </span><span class="s1">logging</span><span class="s3">.</span><span class="s1">INFO</span><span class="s3">),</span>
+            <span class="s1">stderr</span><span class="s4">=</span><span class="s1">LoggerWrapper</span><span class="s3">(</span><span class="s1">log</span><span class="s3">, </span><span class="s1">logging</span><span class="s3">.</span><span class="s1">ERROR</span><span class="s3">),</span>
+        <span class="s3">)</span>
+
+    <span class="s2">def </span><span class="s1">__exit__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">exc_type</span><span class="s3">, </span><span class="s1">exc_val</span><span class="s3">, </span><span class="s1">exc_tb</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">needs_cleanup </span><span class="s4">= </span><span class="s3">(</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">_cleanup </span><span class="s2">and</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">path </span><span class="s2">is not None and</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">isdir</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">path</span><span class="s3">)</span>
+        <span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">needs_cleanup</span><span class="s4">:</span>
+            <span class="s1">shutil</span><span class="s3">.</span><span class="s1">rmtree</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">path</span><span class="s3">)</span>
+
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">save_path </span><span class="s2">is None</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">pop</span><span class="s3">(</span><span class="s5">'PATH'</span><span class="s3">, </span><span class="s2">None</span><span class="s3">)</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s6">[</span><span class="s5">'PATH'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">save_path</span>
+
+        <span class="s2">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">save_pythonpath </span><span class="s2">is None</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">pop</span><span class="s3">(</span><span class="s5">'PYTHONPATH'</span><span class="s3">, </span><span class="s2">None</span><span class="s3">)</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s6">[</span><span class="s5">'PYTHONPATH'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">save_pythonpath</span>
+
+
+<span class="s2">def </span><span class="s1">build_wheel</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">, </span><span class="s1">wheel_dir</span><span class="s3">, </span><span class="s1">config_settings</span><span class="s4">=</span><span class="s2">None</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot;Build a wheel from a source directory using PEP 517 hooks. 
+ 
+    :param str source_dir: Source directory containing pyproject.toml 
+    :param str wheel_dir: Target directory to create wheel in 
+    :param dict config_settings: Options to pass to build backend 
+ 
+    This is a blocking function which will run pip in a subprocess to install 
+    build requirements. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">config_settings </span><span class="s2">is None</span><span class="s4">:</span>
+        <span class="s1">config_settings </span><span class="s4">= </span><span class="s6">{}</span>
+    <span class="s1">requires</span><span class="s3">, </span><span class="s1">backend</span><span class="s3">, </span><span class="s1">backend_path </span><span class="s4">= </span><span class="s1">_load_pyproject</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">)</span>
+    <span class="s1">hooks </span><span class="s4">= </span><span class="s1">Pep517HookCaller</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">, </span><span class="s1">backend</span><span class="s3">, </span><span class="s1">backend_path</span><span class="s3">)</span>
+
+    <span class="s2">with </span><span class="s1">BuildEnvironment</span><span class="s3">() </span><span class="s2">as </span><span class="s1">env</span><span class="s4">:</span>
+        <span class="s1">env</span><span class="s3">.</span><span class="s1">pip_install</span><span class="s3">(</span><span class="s1">requires</span><span class="s3">)</span>
+        <span class="s1">reqs </span><span class="s4">= </span><span class="s1">hooks</span><span class="s3">.</span><span class="s1">get_requires_for_build_wheel</span><span class="s3">(</span><span class="s1">config_settings</span><span class="s3">)</span>
+        <span class="s1">env</span><span class="s3">.</span><span class="s1">pip_install</span><span class="s3">(</span><span class="s1">reqs</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">hooks</span><span class="s3">.</span><span class="s1">build_wheel</span><span class="s3">(</span><span class="s1">wheel_dir</span><span class="s3">, </span><span class="s1">config_settings</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">build_sdist</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">, </span><span class="s1">sdist_dir</span><span class="s3">, </span><span class="s1">config_settings</span><span class="s4">=</span><span class="s2">None</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot;Build an sdist from a source directory using PEP 517 hooks. 
+ 
+    :param str source_dir: Source directory containing pyproject.toml 
+    :param str sdist_dir: Target directory to place sdist in 
+    :param dict config_settings: Options to pass to build backend 
+ 
+    This is a blocking function which will run pip in a subprocess to install 
+    build requirements. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">config_settings </span><span class="s2">is None</span><span class="s4">:</span>
+        <span class="s1">config_settings </span><span class="s4">= </span><span class="s6">{}</span>
+    <span class="s1">requires</span><span class="s3">, </span><span class="s1">backend</span><span class="s3">, </span><span class="s1">backend_path </span><span class="s4">= </span><span class="s1">_load_pyproject</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">)</span>
+    <span class="s1">hooks </span><span class="s4">= </span><span class="s1">Pep517HookCaller</span><span class="s3">(</span><span class="s1">source_dir</span><span class="s3">, </span><span class="s1">backend</span><span class="s3">, </span><span class="s1">backend_path</span><span class="s3">)</span>
+
+    <span class="s2">with </span><span class="s1">BuildEnvironment</span><span class="s3">() </span><span class="s2">as </span><span class="s1">env</span><span class="s4">:</span>
+        <span class="s1">env</span><span class="s3">.</span><span class="s1">pip_install</span><span class="s3">(</span><span class="s1">requires</span><span class="s3">)</span>
+        <span class="s1">reqs </span><span class="s4">= </span><span class="s1">hooks</span><span class="s3">.</span><span class="s1">get_requires_for_build_sdist</span><span class="s3">(</span><span class="s1">config_settings</span><span class="s3">)</span>
+        <span class="s1">env</span><span class="s3">.</span><span class="s1">pip_install</span><span class="s3">(</span><span class="s1">reqs</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">hooks</span><span class="s3">.</span><span class="s1">build_sdist</span><span class="s3">(</span><span class="s1">sdist_dir</span><span class="s3">, </span><span class="s1">config_settings</span><span class="s3">)</span>
+</pre>
+</body>
+</html>

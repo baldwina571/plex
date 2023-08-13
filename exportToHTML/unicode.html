@@ -1,0 +1,1090 @@
+<html>
+<head>
+<title>unicode</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #b4c2f0;}
+.s4 { color: #baacff;}
+.s5 { color: #64d1a9;}
+.s6 { color: #7fdaff;}
+.s7 { color: #ff9668;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+unicode</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/Users/aaronbaldwin/Desktop/My_scripts/sonarr/venv/bin/python</span>
+
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">unicode_literals</span><span class="s3">, </span><span class="s1">print_function</span>
+
+<span class="s2">import </span><span class="s1">os</span><span class="s3">, </span><span class="s1">glob</span><span class="s3">, </span><span class="s1">sys</span><span class="s3">, </span><span class="s1">unicodedata</span><span class="s3">, </span><span class="s1">locale</span><span class="s3">, </span><span class="s1">gzip</span><span class="s3">, </span><span class="s1">re</span><span class="s3">, </span><span class="s1">traceback</span><span class="s3">, </span><span class="s1">encodings</span><span class="s3">, </span><span class="s1">io</span><span class="s3">, </span><span class="s1">codecs</span><span class="s3">, </span><span class="s1">shutil</span>
+<span class="s2">import </span><span class="s1">webbrowser</span><span class="s3">, </span><span class="s1">textwrap</span><span class="s3">, </span><span class="s1">struct</span>
+
+<span class="s0">#from pprint import pprint</span>
+
+<span class="s0"># bz2 was introduced in 2.3, but we want this to work even if for some</span>
+<span class="s0"># reason it is not available</span>
+<span class="s2">try</span><span class="s4">:</span>
+    <span class="s2">import </span><span class="s1">bz2</span>
+<span class="s2">except </span><span class="s1">ImportError</span><span class="s4">:</span>
+    <span class="s1">bz2 </span><span class="s4">= </span><span class="s2">None</span>
+<span class="s2">try</span><span class="s4">:</span>
+    <span class="s2">import </span><span class="s1">lzma</span>
+<span class="s2">except </span><span class="s1">ImportError</span><span class="s4">:</span>
+    <span class="s1">lzma </span><span class="s4">= </span><span class="s2">None</span>
+
+
+<span class="s2">def </span><span class="s1">is_ascii</span><span class="s3">(</span><span class="s1">s</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;test is string s consists completely of ascii characters&quot;</span>
+    <span class="s2">try</span><span class="s4">:</span>
+        <span class="s1">s</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s5">'ascii'</span><span class="s3">)</span>
+    <span class="s2">except </span><span class="s1">UnicodeEncodeError</span><span class="s4">:</span>
+        <span class="s2">return False</span>
+    <span class="s2">return True</span>
+
+<span class="s1">PY3 </span><span class="s4">= </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">version_info</span><span class="s6">[</span><span class="s7">0</span><span class="s6">] </span><span class="s4">&gt;= </span><span class="s7">3</span>
+<span class="s2">if </span><span class="s1">PY3</span><span class="s4">:</span>
+    <span class="s2">import </span><span class="s1">subprocess </span><span class="s2">as </span><span class="s1">cmd</span>
+    <span class="s2">from </span><span class="s1">urllib</span><span class="s3">.</span><span class="s1">parse </span><span class="s2">import </span><span class="s1">quote </span><span class="s2">as </span><span class="s1">urlquote</span>
+    <span class="s2">import </span><span class="s1">io</span>
+    <span class="s2">from </span><span class="s1">urllib</span><span class="s3">.</span><span class="s1">request </span><span class="s2">import </span><span class="s1">urlopen</span>
+
+    <span class="s2">def </span><span class="s1">out</span><span class="s3">(</span><span class="s4">*</span><span class="s1">args</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s0">&quot;pring args, converting them to output charset&quot;</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">args</span><span class="s4">:</span>
+            <span class="s0">#sys.stdout.flush()</span>
+            <span class="s1">sys</span><span class="s3">.</span><span class="s1">stdout</span><span class="s3">.</span><span class="s1">buffer</span><span class="s3">.</span><span class="s1">write</span><span class="s3">(</span><span class="s1">i</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s1">options</span><span class="s3">.</span><span class="s1">iocharset</span><span class="s3">, </span><span class="s5">'replace'</span><span class="s3">))</span>
+
+    <span class="s0"># ord23 is used to convert elements of byte array in python3, which are already integers</span>
+    <span class="s1">ord23 </span><span class="s4">= </span><span class="s2">lambda </span><span class="s1">x</span><span class="s4">: </span><span class="s1">x</span>
+    <span class="s1">chr_orig </span><span class="s4">= </span><span class="s1">chr</span>
+
+<span class="s2">else</span><span class="s4">: </span><span class="s0"># python2</span>
+
+    <span class="s0"># getoutput() and getstatusoutput() methods have</span>
+    <span class="s0"># been moved from commands to the subprocess module</span>
+    <span class="s0"># with Python &gt;= 3.x</span>
+    <span class="s2">import </span><span class="s1">commands </span><span class="s2">as </span><span class="s1">cmd</span>
+
+    <span class="s2">from </span><span class="s1">urllib </span><span class="s2">import </span><span class="s1">quote </span><span class="s2">as </span><span class="s1">urlquote</span>
+    <span class="s2">from </span><span class="s1">urllib </span><span class="s2">import </span><span class="s1">urlopen</span>
+
+    <span class="s2">def </span><span class="s1">out</span><span class="s3">(</span><span class="s4">*</span><span class="s1">args</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s0">&quot;pring args, converting them to output charset&quot;</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">args</span><span class="s4">:</span>
+            <span class="s1">sys</span><span class="s3">.</span><span class="s1">stdout</span><span class="s3">.</span><span class="s1">write</span><span class="s3">(</span><span class="s1">i</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s1">options</span><span class="s3">.</span><span class="s1">iocharset</span><span class="s3">, </span><span class="s5">'replace'</span><span class="s3">))</span>
+
+    <span class="s1">ord23 </span><span class="s4">= </span><span class="s1">ord</span>
+
+    <span class="s0"># python3-like chr</span>
+    <span class="s1">chr_orig </span><span class="s4">= </span><span class="s1">chr</span>
+    <span class="s1">chr </span><span class="s4">= </span><span class="s1">unichr</span>
+    <span class="s1">str </span><span class="s4">= </span><span class="s1">unicode</span>
+    <span class="s1">range </span><span class="s4">= </span><span class="s1">xrange</span>
+
+<span class="s2">from </span><span class="s1">optparse </span><span class="s2">import </span><span class="s1">OptionParser</span>
+
+<span class="s1">VERSION</span><span class="s4">=</span><span class="s5">'2.9'</span>
+
+
+<span class="s0"># list of terminals that support bidi</span>
+<span class="s1">biditerms </span><span class="s4">= </span><span class="s6">[</span><span class="s5">'mlterm'</span><span class="s6">]</span>
+
+<span class="s2">try</span><span class="s4">:</span>
+    <span class="s1">locale</span><span class="s3">.</span><span class="s1">setlocale</span><span class="s3">(</span><span class="s1">locale</span><span class="s3">.</span><span class="s1">LC_ALL</span><span class="s3">, </span><span class="s5">''</span><span class="s3">)</span>
+<span class="s2">except </span><span class="s1">locale</span><span class="s3">.</span><span class="s1">Error</span><span class="s4">:</span>
+    <span class="s2">pass</span>
+
+<span class="s0"># guess terminal charset</span>
+<span class="s2">try</span><span class="s4">:</span>
+    <span class="s1">iocharsetguess </span><span class="s4">= </span><span class="s1">locale</span><span class="s3">.</span><span class="s1">nl_langinfo</span><span class="s3">(</span><span class="s1">locale</span><span class="s3">.</span><span class="s1">CODESET</span><span class="s3">) </span><span class="s2">or </span><span class="s5">&quot;ascii&quot;</span>
+<span class="s2">except </span><span class="s1">locale</span><span class="s3">.</span><span class="s1">Error</span><span class="s4">:</span>
+    <span class="s1">iocharsetguess </span><span class="s4">= </span><span class="s5">&quot;ascii&quot;</span>
+
+<span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">environ</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s5">'TERM'</span><span class="s3">) </span><span class="s2">in </span><span class="s1">biditerms </span><span class="s2">and </span><span class="s1">iocharsetguess</span><span class="s3">.</span><span class="s1">lower</span><span class="s3">().</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">'utf'</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">LTR </span><span class="s4">= </span><span class="s1">chr</span><span class="s3">(</span><span class="s7">0x202d</span><span class="s3">) </span><span class="s0"># left to right override</span>
+<span class="s2">else</span><span class="s4">:</span>
+    <span class="s1">LTR </span><span class="s4">= </span><span class="s5">''</span>
+
+
+<span class="s1">colours </span><span class="s4">= </span><span class="s6">{</span>
+            <span class="s5">'no_colour'  </span><span class="s4">:    </span><span class="s5">&quot;&quot;</span><span class="s3">,</span>
+            <span class="s5">'default'    </span><span class="s4">:    </span><span class="s5">&quot;\033[0m&quot;</span><span class="s3">,</span>
+            <span class="s5">'bold'       </span><span class="s4">:    </span><span class="s5">&quot;\033[1m&quot;</span><span class="s3">,</span>
+            <span class="s5">'underline'  </span><span class="s4">:    </span><span class="s5">&quot;\033[4m&quot;</span><span class="s3">,</span>
+            <span class="s5">'blink'      </span><span class="s4">:    </span><span class="s5">&quot;\033[5m&quot;</span><span class="s3">,</span>
+            <span class="s5">'reverse'    </span><span class="s4">:    </span><span class="s5">&quot;\033[7m&quot;</span><span class="s3">,</span>
+            <span class="s5">'concealed'  </span><span class="s4">:    </span><span class="s5">&quot;\033[8m&quot;</span><span class="s3">,</span>
+
+            <span class="s5">'black'      </span><span class="s4">:    </span><span class="s5">&quot;\033[30m&quot;</span><span class="s3">,</span>
+            <span class="s5">'red'        </span><span class="s4">:    </span><span class="s5">&quot;\033[31m&quot;</span><span class="s3">,</span>
+            <span class="s5">'green'      </span><span class="s4">:    </span><span class="s5">&quot;\033[32m&quot;</span><span class="s3">,</span>
+            <span class="s5">'yellow'     </span><span class="s4">:    </span><span class="s5">&quot;\033[33m&quot;</span><span class="s3">,</span>
+            <span class="s5">'blue'       </span><span class="s4">:    </span><span class="s5">&quot;\033[34m&quot;</span><span class="s3">,</span>
+            <span class="s5">'magenta'    </span><span class="s4">:    </span><span class="s5">&quot;\033[35m&quot;</span><span class="s3">,</span>
+            <span class="s5">'cyan'       </span><span class="s4">:    </span><span class="s5">&quot;\033[36m&quot;</span><span class="s3">,</span>
+            <span class="s5">'white'      </span><span class="s4">:    </span><span class="s5">&quot;\033[37m&quot;</span><span class="s3">,</span>
+
+            <span class="s5">'on_black'   </span><span class="s4">:    </span><span class="s5">&quot;\033[40m&quot;</span><span class="s3">,</span>
+            <span class="s5">'on_red'     </span><span class="s4">:    </span><span class="s5">&quot;\033[41m&quot;</span><span class="s3">,</span>
+            <span class="s5">'on_green'   </span><span class="s4">:    </span><span class="s5">&quot;\033[42m&quot;</span><span class="s3">,</span>
+            <span class="s5">'on_yellow'  </span><span class="s4">:    </span><span class="s5">&quot;\033[43m&quot;</span><span class="s3">,</span>
+            <span class="s5">'on_blue'    </span><span class="s4">:    </span><span class="s5">&quot;\033[44m&quot;</span><span class="s3">,</span>
+            <span class="s5">'on_magenta' </span><span class="s4">:    </span><span class="s5">&quot;\033[45m&quot;</span><span class="s3">,</span>
+            <span class="s5">'on_cyan'    </span><span class="s4">:    </span><span class="s5">&quot;\033[46m&quot;</span><span class="s3">,</span>
+            <span class="s5">'on_white'   </span><span class="s4">:    </span><span class="s5">&quot;\033[47m&quot;</span><span class="s3">,</span>
+
+            <span class="s5">'beep'       </span><span class="s4">:    </span><span class="s5">&quot;\007&quot;</span><span class="s3">,</span>
+            <span class="s6">}</span>
+
+
+<span class="s1">general_category </span><span class="s4">= </span><span class="s6">{</span>
+      <span class="s5">'Lu'</span><span class="s4">:  </span><span class="s5">'Letter, Uppercase'</span><span class="s3">,</span>
+      <span class="s5">'Ll'</span><span class="s4">:  </span><span class="s5">'Letter, Lowercase'</span><span class="s3">,</span>
+      <span class="s5">'Lt'</span><span class="s4">:  </span><span class="s5">'Letter, Titlecase'</span><span class="s3">,</span>
+      <span class="s5">'Lm'</span><span class="s4">:  </span><span class="s5">'Letter, Modifier'</span><span class="s3">,</span>
+      <span class="s5">'Lo'</span><span class="s4">:  </span><span class="s5">'Letter, Other'</span><span class="s3">,</span>
+      <span class="s5">'Mn'</span><span class="s4">:  </span><span class="s5">'Mark, Non-Spacing'</span><span class="s3">,</span>
+      <span class="s5">'Mc'</span><span class="s4">:  </span><span class="s5">'Mark, Spacing Combining'</span><span class="s3">,</span>
+      <span class="s5">'Me'</span><span class="s4">:  </span><span class="s5">'Mark, Enclosing'</span><span class="s3">,</span>
+      <span class="s5">'Nd'</span><span class="s4">:  </span><span class="s5">'Number, Decimal Digit'</span><span class="s3">,</span>
+      <span class="s5">'Nl'</span><span class="s4">:  </span><span class="s5">'Number, Letter'</span><span class="s3">,</span>
+      <span class="s5">'No'</span><span class="s4">:  </span><span class="s5">'Number, Other'</span><span class="s3">,</span>
+      <span class="s5">'Pc'</span><span class="s4">:  </span><span class="s5">'Punctuation, Connector'</span><span class="s3">,</span>
+      <span class="s5">'Pd'</span><span class="s4">:  </span><span class="s5">'Punctuation, Dash'</span><span class="s3">,</span>
+      <span class="s5">'Ps'</span><span class="s4">:  </span><span class="s5">'Punctuation, Open'</span><span class="s3">,</span>
+      <span class="s5">'Pe'</span><span class="s4">:  </span><span class="s5">'Punctuation, Close'</span><span class="s3">,</span>
+      <span class="s5">'Pi'</span><span class="s4">:  </span><span class="s5">'Punctuation, Initial quote'</span><span class="s3">,</span>
+      <span class="s5">'Pf'</span><span class="s4">:  </span><span class="s5">'Punctuation, Final quote'</span><span class="s3">,</span>
+      <span class="s5">'Po'</span><span class="s4">:  </span><span class="s5">'Punctuation, Other'</span><span class="s3">,</span>
+      <span class="s5">'Sm'</span><span class="s4">:  </span><span class="s5">'Symbol, Math'</span><span class="s3">,</span>
+      <span class="s5">'Sc'</span><span class="s4">:  </span><span class="s5">'Symbol, Currency'</span><span class="s3">,</span>
+      <span class="s5">'Sk'</span><span class="s4">:  </span><span class="s5">'Symbol, Modifier'</span><span class="s3">,</span>
+      <span class="s5">'So'</span><span class="s4">:  </span><span class="s5">'Symbol, Other'</span><span class="s3">,</span>
+      <span class="s5">'Zs'</span><span class="s4">:  </span><span class="s5">'Separator, Space'</span><span class="s3">,</span>
+      <span class="s5">'Zl'</span><span class="s4">:  </span><span class="s5">'Separator, Line'</span><span class="s3">,</span>
+      <span class="s5">'Zp'</span><span class="s4">:  </span><span class="s5">'Separator, Paragraph'</span><span class="s3">,</span>
+      <span class="s5">'Cc'</span><span class="s4">:  </span><span class="s5">'Other, Control'</span><span class="s3">,</span>
+      <span class="s5">'Cf'</span><span class="s4">:  </span><span class="s5">'Other, Format'</span><span class="s3">,</span>
+      <span class="s5">'Cs'</span><span class="s4">:  </span><span class="s5">'Other, Surrogate'</span><span class="s3">,</span>
+      <span class="s5">'Co'</span><span class="s4">:  </span><span class="s5">'Other, Private Use'</span><span class="s3">,</span>
+      <span class="s5">'Cn'</span><span class="s4">:  </span><span class="s5">'Other, Not Assigned'</span><span class="s3">,</span>
+<span class="s6">}</span>
+
+<span class="s1">bidi_category </span><span class="s4">= </span><span class="s6">{</span>
+     <span class="s5">'L'   </span><span class="s4">: </span><span class="s5">'Left-to-Right'</span><span class="s3">,</span>
+     <span class="s5">'LRE' </span><span class="s4">: </span><span class="s5">'Left-to-Right Embedding'</span><span class="s3">,</span>
+     <span class="s5">'LRO' </span><span class="s4">: </span><span class="s5">'Left-to-Right Override'</span><span class="s3">,</span>
+     <span class="s5">'R'   </span><span class="s4">: </span><span class="s5">'Right-to-Left'</span><span class="s3">,</span>
+     <span class="s5">'AL'  </span><span class="s4">: </span><span class="s5">'Right-to-Left Arabic'</span><span class="s3">,</span>
+     <span class="s5">'RLE' </span><span class="s4">: </span><span class="s5">'Right-to-Left Embedding'</span><span class="s3">,</span>
+     <span class="s5">'RLO' </span><span class="s4">: </span><span class="s5">'Right-to-Left Override'</span><span class="s3">,</span>
+     <span class="s5">'PDF' </span><span class="s4">: </span><span class="s5">'Pop Directional Format'</span><span class="s3">,</span>
+     <span class="s5">'EN'  </span><span class="s4">: </span><span class="s5">'European Number'</span><span class="s3">,</span>
+     <span class="s5">'ES'  </span><span class="s4">: </span><span class="s5">'European Number Separator'</span><span class="s3">,</span>
+     <span class="s5">'ET'  </span><span class="s4">: </span><span class="s5">'European Number Terminator'</span><span class="s3">,</span>
+     <span class="s5">'AN'  </span><span class="s4">: </span><span class="s5">'Arabic Number'</span><span class="s3">,</span>
+     <span class="s5">'CS'  </span><span class="s4">: </span><span class="s5">'Common Number Separator'</span><span class="s3">,</span>
+     <span class="s5">'NSM' </span><span class="s4">: </span><span class="s5">'Non-Spacing Mark'</span><span class="s3">,</span>
+     <span class="s5">'BN'  </span><span class="s4">: </span><span class="s5">'Boundary Neutral'</span><span class="s3">,</span>
+     <span class="s5">'B'   </span><span class="s4">: </span><span class="s5">'Paragraph Separator'</span><span class="s3">,</span>
+     <span class="s5">'S'   </span><span class="s4">: </span><span class="s5">'Segment Separator'</span><span class="s3">,</span>
+     <span class="s5">'WS'  </span><span class="s4">: </span><span class="s5">'Whitespace'</span><span class="s3">,</span>
+     <span class="s5">'ON'  </span><span class="s4">: </span><span class="s5">'Other Neutrals'</span><span class="s3">,</span>
+     <span class="s5">'LRI' </span><span class="s4">: </span><span class="s5">'Left-to-Right Isolate'</span><span class="s3">,</span>
+     <span class="s5">'RLI' </span><span class="s4">: </span><span class="s5">'Right-to-Left Isolate'</span><span class="s3">,</span>
+     <span class="s5">'FSI' </span><span class="s4">: </span><span class="s5">'First Strong Isolate'</span><span class="s3">,</span>
+     <span class="s5">'PDI' </span><span class="s4">: </span><span class="s5">'Pop Directional Isolate'</span><span class="s3">,</span>
+<span class="s6">}</span>
+
+<span class="s1">comb_classes </span><span class="s4">= </span><span class="s6">{</span>
+        <span class="s7">0</span><span class="s4">: </span><span class="s5">'Spacing, split, enclosing, reordrant, and Tibetan subjoined'</span><span class="s3">,</span>
+        <span class="s7">1</span><span class="s4">: </span><span class="s5">'Overlays and interior'</span><span class="s3">,</span>
+        <span class="s7">7</span><span class="s4">: </span><span class="s5">'Nuktas'</span><span class="s3">,</span>
+        <span class="s7">8</span><span class="s4">: </span><span class="s5">'Hiragana/Katakana voicing marks'</span><span class="s3">,</span>
+        <span class="s7">9</span><span class="s4">: </span><span class="s5">'Viramas'</span><span class="s3">,</span>
+       <span class="s7">10</span><span class="s4">: </span><span class="s5">'Start of fixed position classes'</span><span class="s3">,</span>
+      <span class="s7">199</span><span class="s4">: </span><span class="s5">'End of fixed position classes'</span><span class="s3">,</span>
+      <span class="s7">200</span><span class="s4">: </span><span class="s5">'Below left attached'</span><span class="s3">,</span>
+      <span class="s7">202</span><span class="s4">: </span><span class="s5">'Below attached'</span><span class="s3">,</span>
+      <span class="s7">204</span><span class="s4">: </span><span class="s5">'Below right attached'</span><span class="s3">,</span>
+      <span class="s7">208</span><span class="s4">: </span><span class="s5">'Left attached (reordrant around single base character)'</span><span class="s3">,</span>
+      <span class="s7">210</span><span class="s4">: </span><span class="s5">'Right attached'</span><span class="s3">,</span>
+      <span class="s7">212</span><span class="s4">: </span><span class="s5">'Above left attached'</span><span class="s3">,</span>
+      <span class="s7">214</span><span class="s4">: </span><span class="s5">'Above attached'</span><span class="s3">,</span>
+      <span class="s7">216</span><span class="s4">: </span><span class="s5">'Above right attached'</span><span class="s3">,</span>
+      <span class="s7">218</span><span class="s4">: </span><span class="s5">'Below left'</span><span class="s3">,</span>
+      <span class="s7">220</span><span class="s4">: </span><span class="s5">'Below'</span><span class="s3">,</span>
+      <span class="s7">222</span><span class="s4">: </span><span class="s5">'Below right'</span><span class="s3">,</span>
+      <span class="s7">224</span><span class="s4">: </span><span class="s5">'Left (reordrant around single base character)'</span><span class="s3">,</span>
+      <span class="s7">226</span><span class="s4">: </span><span class="s5">'Right'</span><span class="s3">,</span>
+      <span class="s7">228</span><span class="s4">: </span><span class="s5">'Above left'</span><span class="s3">,</span>
+      <span class="s7">230</span><span class="s4">: </span><span class="s5">'Above'</span><span class="s3">,</span>
+      <span class="s7">232</span><span class="s4">: </span><span class="s5">'Above right'</span><span class="s3">,</span>
+      <span class="s7">233</span><span class="s4">: </span><span class="s5">'Double below'</span><span class="s3">,</span>
+      <span class="s7">234</span><span class="s4">: </span><span class="s5">'Double above'</span><span class="s3">,</span>
+      <span class="s7">240</span><span class="s4">: </span><span class="s5">'Below (iota subscript)'</span><span class="s3">,</span>
+<span class="s6">}</span>
+
+<span class="s1">eaw_description </span><span class="s4">= </span><span class="s6">{</span>
+    <span class="s5">'F'</span><span class="s4">: </span><span class="s5">'fullwidth'</span><span class="s3">,</span>
+    <span class="s5">'H'</span><span class="s4">: </span><span class="s5">'halfwidth'</span><span class="s3">,</span>
+    <span class="s5">'W'</span><span class="s4">: </span><span class="s5">'wide'</span><span class="s3">,</span>
+    <span class="s5">'Na'</span><span class="s4">:</span><span class="s5">'narrow'</span><span class="s3">,</span>
+    <span class="s5">'A'</span><span class="s4">: </span><span class="s5">'ambiguous'</span><span class="s3">,</span>
+    <span class="s5">'N'</span><span class="s4">: </span><span class="s5">'neutral'</span>
+<span class="s6">}</span>
+
+<span class="s2">def </span><span class="s1">get_unicode_blocks_descriptions</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s0">&quot;parses Blocks.txt&quot;</span>
+    <span class="s1">unicodeblocks </span><span class="s4">= </span><span class="s6">{} </span><span class="s0"># (low, high): 'desc'</span>
+    <span class="s1">f </span><span class="s4">= </span><span class="s2">None</span>
+    <span class="s2">for </span><span class="s1">name </span><span class="s2">in </span><span class="s1">UnicodeBlocksFiles</span><span class="s4">:</span>
+        <span class="s1">f </span><span class="s4">= </span><span class="s1">OpenGzip</span><span class="s3">(</span><span class="s1">name</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">f</span><span class="s4">:</span>
+            <span class="s2">break</span>
+    <span class="s2">if not </span><span class="s1">f</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s6">{}</span>
+    <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">f</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">line</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">'#'</span><span class="s3">) </span><span class="s2">or </span><span class="s5">';' </span><span class="s2">not in </span><span class="s1">line </span><span class="s2">or </span><span class="s5">'..' </span><span class="s2">not in </span><span class="s1">line</span><span class="s4">:</span>
+            <span class="s2">continue</span>
+        <span class="s1">spl </span><span class="s4">= </span><span class="s1">line</span><span class="s3">.</span><span class="s1">split</span><span class="s3">(</span><span class="s5">';'</span><span class="s3">, </span><span class="s7">1</span><span class="s3">)</span>
+        <span class="s1">ran</span><span class="s3">, </span><span class="s1">desc </span><span class="s4">= </span><span class="s1">spl</span>
+        <span class="s1">desc </span><span class="s4">= </span><span class="s1">desc</span><span class="s3">.</span><span class="s1">strip</span><span class="s3">()</span>
+        <span class="s1">low</span><span class="s3">, </span><span class="s1">high </span><span class="s4">= </span><span class="s1">ran</span><span class="s3">.</span><span class="s1">split</span><span class="s3">(</span><span class="s5">'..'</span><span class="s3">, </span><span class="s7">1</span><span class="s3">)</span>
+        <span class="s1">low </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">low</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span>
+        <span class="s1">high </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">high</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span>
+        <span class="s1">unicodeblocks</span><span class="s6">[ </span><span class="s3">(</span><span class="s1">low</span><span class="s3">,</span><span class="s1">high</span><span class="s3">) </span><span class="s6">] </span><span class="s4">= </span><span class="s1">desc</span>
+    <span class="s2">return </span><span class="s1">unicodeblocks</span>
+
+<span class="s1">unicodeblocks </span><span class="s4">= </span><span class="s2">None</span>
+<span class="s2">def </span><span class="s1">get_unicode_block</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;return start_of_block, end_of_block, block_name&quot;</span>
+    <span class="s2">global </span><span class="s1">unicodeblocks</span>
+    <span class="s2">if </span><span class="s1">unicodeblocks </span><span class="s2">is None</span><span class="s4">:</span>
+        <span class="s1">unicodeblocks </span><span class="s4">= </span><span class="s1">get_unicode_blocks_descriptions</span><span class="s3">()</span>
+    <span class="s1">ch </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+    <span class="s2">for </span><span class="s1">low</span><span class="s3">, </span><span class="s1">high </span><span class="s2">in </span><span class="s1">unicodeblocks</span><span class="s3">.</span><span class="s1">keys</span><span class="s3">()</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">low</span><span class="s4">&lt;=</span><span class="s1">ch</span><span class="s4">&lt;=</span><span class="s1">high</span><span class="s4">:</span>
+            <span class="s2">return </span><span class="s1">low</span><span class="s3">, </span><span class="s1">high</span><span class="s3">, </span><span class="s1">unicodeblocks</span><span class="s6">[ </span><span class="s3">(</span><span class="s1">low</span><span class="s3">,</span><span class="s1">high</span><span class="s3">) </span><span class="s6">]</span>
+
+<span class="s2">def </span><span class="s1">get_unicode_properties</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">properties </span><span class="s4">= </span><span class="s6">{}</span>
+    <span class="s2">if </span><span class="s1">ch </span><span class="s2">in </span><span class="s1">linecache</span><span class="s4">:</span>
+        <span class="s1">fields </span><span class="s4">= </span><span class="s1">linecache</span><span class="s6">[</span><span class="s1">ch</span><span class="s6">]</span><span class="s3">.</span><span class="s1">strip</span><span class="s3">().</span><span class="s1">split</span><span class="s3">(</span><span class="s5">';'</span><span class="s3">)</span>
+        <span class="s1">proplist </span><span class="s4">= </span><span class="s6">[</span><span class="s5">'codepoint'</span><span class="s3">, </span><span class="s5">'name'</span><span class="s3">, </span><span class="s5">'category'</span><span class="s3">, </span><span class="s5">'combining'</span><span class="s3">, </span><span class="s5">'bidi'</span><span class="s3">, </span><span class="s5">'decomposition'</span><span class="s3">, </span><span class="s5">'dummy'</span><span class="s3">, </span><span class="s5">'digit_value'</span><span class="s3">, </span><span class="s5">'numeric_value'</span><span class="s3">, </span><span class="s5">'mirrored'</span><span class="s3">, </span><span class="s5">'unicode1name'</span><span class="s3">, </span><span class="s5">'iso_comment'</span><span class="s3">, </span><span class="s5">'uppercase'</span><span class="s3">, </span><span class="s5">'lowercase'</span><span class="s3">, </span><span class="s5">'titlecase'</span><span class="s6">]</span>
+        <span class="s2">for </span><span class="s1">i</span><span class="s3">, </span><span class="s1">prop </span><span class="s2">in </span><span class="s1">enumerate</span><span class="s3">(</span><span class="s1">proplist</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s2">if </span><span class="s1">prop</span><span class="s4">!=</span><span class="s5">'dummy'</span><span class="s4">:</span>
+                <span class="s2">if </span><span class="s1">i</span><span class="s4">&lt;</span><span class="s1">len</span><span class="s3">(</span><span class="s1">fields</span><span class="s3">)</span><span class="s4">:</span>
+                    <span class="s1">properties</span><span class="s6">[</span><span class="s1">prop</span><span class="s6">] </span><span class="s4">= </span><span class="s1">fields</span><span class="s6">[</span><span class="s1">i</span><span class="s6">]</span>
+        <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'lowercase'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">properties</span><span class="s6">[</span><span class="s5">'lowercase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">int</span><span class="s3">(</span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'lowercase'</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">))</span>
+        <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'uppercase'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">properties</span><span class="s6">[</span><span class="s5">'uppercase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">int</span><span class="s3">(</span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'uppercase'</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">))</span>
+        <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'titlecase'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">properties</span><span class="s6">[</span><span class="s5">'titlecase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">int</span><span class="s3">(</span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'titlecase'</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">))</span>
+
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'combining'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'combining'</span><span class="s6">]</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'mirrored'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'mirrored'</span><span class="s6">]</span><span class="s4">==</span><span class="s5">'Y'</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'codepoint'</span><span class="s6">] </span><span class="s4">= </span><span class="s5">'%04X' </span><span class="s4">% </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'name'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">name</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">, </span><span class="s5">''</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'category'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">category</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'combining'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">combining</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'bidi'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">bidirectional</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'decomposition'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">decomposition</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'digit_value'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">str</span><span class="s3">(</span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">digit</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">, </span><span class="s5">''</span><span class="s3">))</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'numeric_value'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">str</span><span class="s3">(</span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">numeric</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">, </span><span class="s5">''</span><span class="s3">))</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'mirrored'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">mirrored</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'unicode1name'</span><span class="s6">] </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'iso_comment'</span><span class="s6">] </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">properties</span><span class="s6">[</span><span class="s5">'lowercase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'uppercase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'titlecase'</span><span class="s6">] </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">ch_up </span><span class="s4">= </span><span class="s1">ch</span><span class="s3">.</span><span class="s1">upper</span><span class="s3">()</span>
+        <span class="s1">ch_lo </span><span class="s4">= </span><span class="s1">ch</span><span class="s3">.</span><span class="s1">lower</span><span class="s3">()</span>
+        <span class="s1">ch_title </span><span class="s4">= </span><span class="s1">ch</span><span class="s3">.</span><span class="s1">title</span><span class="s3">()</span>
+        <span class="s2">if </span><span class="s1">ch_up </span><span class="s4">!= </span><span class="s1">ch</span><span class="s4">:</span>
+            <span class="s1">properties</span><span class="s6">[</span><span class="s5">'uppercase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">ch_up</span>
+        <span class="s2">if </span><span class="s1">ch_lo </span><span class="s4">!= </span><span class="s1">ch</span><span class="s4">:</span>
+            <span class="s1">properties</span><span class="s6">[</span><span class="s5">'lowercase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">ch_lo</span>
+        <span class="s2">if </span><span class="s1">ch_title </span><span class="s4">!= </span><span class="s1">ch_up</span><span class="s4">:</span>
+            <span class="s1">properties</span><span class="s6">[</span><span class="s5">'titlecase'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">ch_title</span>
+    <span class="s1">properties</span><span class="s6">[</span><span class="s5">'east_asian_width'</span><span class="s6">] </span><span class="s4">= </span><span class="s1">get_east_asian_width</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">properties</span>
+
+
+<span class="s2">def </span><span class="s1">do_init</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s1">HomeDir </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">expanduser</span><span class="s3">(</span><span class="s5">'~/.unicode'</span><span class="s3">)</span>
+    <span class="s1">HomeUnicodeData </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">HomeDir</span><span class="s3">, </span><span class="s5">&quot;UnicodeData.txt&quot;</span><span class="s3">)</span>
+    <span class="s2">global </span><span class="s1">UnicodeDataFileNames</span>
+    <span class="s1">UnicodeDataFileNames </span><span class="s4">= </span><span class="s6">[</span><span class="s1">HomeUnicodeData</span><span class="s3">, </span><span class="s5">'/usr/share/unicode/UnicodeData.txt'</span><span class="s3">, </span><span class="s5">'/usr/share/unicode-data/UnicodeData.txt'</span><span class="s3">, </span><span class="s5">'/usr/share/unidata/UnicodeData.txt'</span><span class="s3">, </span><span class="s5">'/usr/share/unicode/ucd/UnicodeData.txt'</span><span class="s3">, </span><span class="s5">'./UnicodeData.txt'</span><span class="s6">] </span><span class="s4">+ </span><span class="s1">\</span>
+        <span class="s1">glob</span><span class="s3">.</span><span class="s1">glob</span><span class="s3">(</span><span class="s5">'/usr/share/unidata/UnicodeData*.txt'</span><span class="s3">) </span><span class="s4">+ </span><span class="s1">\</span>
+        <span class="s1">glob</span><span class="s3">.</span><span class="s1">glob</span><span class="s3">(</span><span class="s5">'/usr/share/perl/*/unicore/UnicodeData.txt'</span><span class="s3">) </span><span class="s4">+ </span><span class="s1">\</span>
+        <span class="s1">glob</span><span class="s3">.</span><span class="s1">glob</span><span class="s3">(</span><span class="s5">'/System/Library/Perl/*/unicore/UnicodeData.txt'</span><span class="s3">) </span><span class="s0"># for MacOSX</span>
+
+    <span class="s1">HomeUnihanData </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">HomeDir</span><span class="s3">, </span><span class="s5">&quot;Unihan*&quot;</span><span class="s3">)</span>
+    <span class="s2">global </span><span class="s1">UnihanDataGlobs</span>
+    <span class="s1">UnihanDataGlobs </span><span class="s4">= </span><span class="s6">[</span><span class="s1">HomeUnihanData</span><span class="s3">, </span><span class="s5">'/usr/share/unidata/Unihan*'</span><span class="s3">, </span><span class="s5">'/usr/share/unicode-data/Unihan*'</span><span class="s3">, </span><span class="s5">'/usr/share/unicode/Unihan*'</span><span class="s3">, </span><span class="s5">'./Unihan*'</span><span class="s6">]</span>
+    <span class="s1">HomeUnicodeBlocks </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">HomeDir</span><span class="s3">, </span><span class="s5">&quot;Blocks.txt&quot;</span><span class="s3">)</span>
+    <span class="s2">global </span><span class="s1">UnicodeBlocksFiles</span>
+    <span class="s1">UnicodeBlocksFiles </span><span class="s4">= </span><span class="s6">[</span><span class="s1">HomeUnicodeBlocks</span><span class="s3">, </span><span class="s5">'/usr/share/unicode/Blocks.txt'</span><span class="s3">, </span><span class="s5">'/usr/share/unicode-data/Blocks.txt'</span><span class="s3">, </span><span class="s5">'/usr/share/unidata/Blocks.txt'</span><span class="s3">, </span><span class="s5">'./Blocks.txt'</span><span class="s6">]</span>
+    <span class="s0"># cache where grepped unicode properties are kept</span>
+    <span class="s2">global </span><span class="s1">linecache</span>
+    <span class="s1">linecache </span><span class="s4">= </span><span class="s6">{}</span>
+
+<span class="s2">def </span><span class="s1">get_unihan_files</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s1">fos </span><span class="s4">= </span><span class="s6">[] </span><span class="s0"># list of file names for Unihan data file(s)</span>
+    <span class="s2">for </span><span class="s1">gl </span><span class="s2">in </span><span class="s1">UnihanDataGlobs</span><span class="s4">:</span>
+        <span class="s1">fnames </span><span class="s4">= </span><span class="s1">glob</span><span class="s3">.</span><span class="s1">glob</span><span class="s3">(</span><span class="s1">gl</span><span class="s3">)</span>
+        <span class="s1">fos </span><span class="s4">+= </span><span class="s1">fnames</span>
+    <span class="s2">return </span><span class="s1">fos</span>
+
+<span class="s2">def </span><span class="s1">get_unihan_properties_internal</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">properties </span><span class="s4">= </span><span class="s6">{}</span>
+    <span class="s1">ch </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+    <span class="s2">global </span><span class="s1">unihan_fs</span>
+    <span class="s2">for </span><span class="s1">f </span><span class="s2">in </span><span class="s1">unihan_fs</span><span class="s4">:</span>
+        <span class="s1">fo </span><span class="s4">= </span><span class="s1">OpenGzip</span><span class="s3">(</span><span class="s1">f</span><span class="s3">)</span>
+        <span class="s2">for </span><span class="s1">l </span><span class="s2">in </span><span class="s1">fo</span><span class="s4">:</span>
+            <span class="s2">if </span><span class="s1">l</span><span class="s3">.</span><span class="s1">startswith</span><span class="s3">(</span><span class="s5">'#'</span><span class="s3">)</span><span class="s4">:</span>
+                <span class="s2">continue</span>
+            <span class="s1">line </span><span class="s4">= </span><span class="s1">l</span><span class="s3">.</span><span class="s1">strip</span><span class="s3">()</span>
+            <span class="s2">if not </span><span class="s1">line</span><span class="s4">:</span>
+                <span class="s2">continue</span>
+            <span class="s1">spl </span><span class="s4">= </span><span class="s1">line</span><span class="s3">.</span><span class="s1">strip</span><span class="s3">().</span><span class="s1">split</span><span class="s3">(</span><span class="s5">'\t'</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">spl</span><span class="s3">) </span><span class="s4">!= </span><span class="s7">3</span><span class="s4">:</span>
+                <span class="s2">continue</span>
+            <span class="s1">char</span><span class="s3">, </span><span class="s1">key</span><span class="s3">, </span><span class="s1">value </span><span class="s4">= </span><span class="s1">spl</span>
+            <span class="s2">if </span><span class="s1">int</span><span class="s3">(</span><span class="s1">char</span><span class="s6">[</span><span class="s7">2</span><span class="s4">:</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">) </span><span class="s4">== </span><span class="s1">ch</span><span class="s4">:</span>
+                <span class="s1">properties</span><span class="s6">[</span><span class="s1">key</span><span class="s6">] </span><span class="s4">= </span><span class="s1">value</span>
+            <span class="s2">elif </span><span class="s1">int</span><span class="s3">(</span><span class="s1">char</span><span class="s6">[</span><span class="s7">2</span><span class="s4">:</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span><span class="s4">&gt;</span><span class="s1">ch</span><span class="s4">:</span>
+                <span class="s2">break</span>
+    <span class="s2">return </span><span class="s1">properties</span>
+
+<span class="s2">def </span><span class="s1">get_unihan_properties_zgrep</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">properties </span><span class="s4">= </span><span class="s6">{}</span>
+    <span class="s2">global </span><span class="s1">unihan_fs</span>
+    <span class="s1">ch </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+    <span class="s1">chs </span><span class="s4">= </span><span class="s5">'U+%X' </span><span class="s4">% </span><span class="s1">ch</span>
+    <span class="s2">for </span><span class="s1">f </span><span class="s2">in </span><span class="s1">unihan_fs</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">f</span><span class="s3">.</span><span class="s1">endswith</span><span class="s3">(</span><span class="s5">'.gz'</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">grepcmd </span><span class="s4">= </span><span class="s5">'zgrep'</span>
+        <span class="s2">elif </span><span class="s1">f</span><span class="s3">.</span><span class="s1">endswith</span><span class="s3">(</span><span class="s5">'.bz2'</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">grepcmd </span><span class="s4">= </span><span class="s5">'bzgrep'</span>
+        <span class="s2">elif </span><span class="s1">f</span><span class="s3">.</span><span class="s1">endswith</span><span class="s3">(</span><span class="s5">'.xz'</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">grepcmd </span><span class="s4">= </span><span class="s5">'xzgrep'</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">grepcmd </span><span class="s4">= </span><span class="s5">'grep'</span>
+        <span class="s1">cmdline </span><span class="s4">= </span><span class="s1">grepcmd</span><span class="s4">+</span><span class="s5">' ^'</span><span class="s4">+</span><span class="s1">chs</span><span class="s4">+</span><span class="s5">r'\\b '</span><span class="s4">+</span><span class="s1">f</span>
+        <span class="s1">status</span><span class="s3">, </span><span class="s1">output </span><span class="s4">= </span><span class="s1">cmd</span><span class="s3">.</span><span class="s1">getstatusoutput</span><span class="s3">(</span><span class="s1">cmdline</span><span class="s3">)</span>
+        <span class="s2">if not </span><span class="s1">PY3</span><span class="s4">:</span>
+            <span class="s1">output </span><span class="s4">= </span><span class="s1">unicode</span><span class="s3">(</span><span class="s1">output</span><span class="s3">, </span><span class="s5">'utf-8'</span><span class="s3">)</span>
+        <span class="s1">output </span><span class="s4">= </span><span class="s1">output</span><span class="s3">.</span><span class="s1">split</span><span class="s3">(</span><span class="s5">'\n'</span><span class="s3">)</span>
+        <span class="s2">for </span><span class="s1">l </span><span class="s2">in </span><span class="s1">output</span><span class="s4">:</span>
+            <span class="s2">if not </span><span class="s1">l</span><span class="s4">:</span>
+                <span class="s2">continue</span>
+            <span class="s1">char</span><span class="s3">, </span><span class="s1">key</span><span class="s3">, </span><span class="s1">value </span><span class="s4">= </span><span class="s1">l</span><span class="s3">.</span><span class="s1">strip</span><span class="s3">().</span><span class="s1">split</span><span class="s3">(</span><span class="s5">'\t'</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">int</span><span class="s3">(</span><span class="s1">char</span><span class="s6">[</span><span class="s7">2</span><span class="s4">:</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">) </span><span class="s4">== </span><span class="s1">ch</span><span class="s4">:</span>
+                <span class="s1">properties</span><span class="s6">[</span><span class="s1">key</span><span class="s6">] </span><span class="s4">= </span><span class="s1">value</span>
+            <span class="s2">elif </span><span class="s1">int</span><span class="s3">(</span><span class="s1">char</span><span class="s6">[</span><span class="s7">2</span><span class="s4">:</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span><span class="s4">&gt;</span><span class="s1">ch</span><span class="s4">:</span>
+                <span class="s2">break</span>
+    <span class="s2">return </span><span class="s1">properties</span>
+
+<span class="s0"># basic sanity check, if e.g. you run this on MS Windows...</span>
+<span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s5">'/bin/grep'</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">get_unihan_properties </span><span class="s4">= </span><span class="s1">get_unihan_properties_zgrep</span>
+<span class="s2">else</span><span class="s4">:</span>
+    <span class="s1">get_unihan_properties </span><span class="s4">= </span><span class="s1">get_unihan_properties_internal</span>
+
+
+<span class="s2">def </span><span class="s1">error</span><span class="s3">(</span><span class="s1">txt</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">out</span><span class="s3">(</span><span class="s1">txt</span><span class="s3">)</span>
+    <span class="s1">out</span><span class="s3">(</span><span class="s5">'\n'</span><span class="s3">)</span>
+    <span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">(</span><span class="s7">1</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">get_gzip_filename</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;return fname, if it does not exist, return fname+.gz, if neither that, fname+.bz2, if neither that, fname+.xz, if neither that, return None&quot;</span>
+    <span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s1">fname</span>
+    <span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s1">fname</span><span class="s4">+</span><span class="s5">'.gz'</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s1">fname</span><span class="s4">+</span><span class="s5">'.gz'</span>
+    <span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s1">fname</span><span class="s4">+</span><span class="s5">'.bz2'</span><span class="s3">) </span><span class="s2">and </span><span class="s1">bz2 </span><span class="s2">is not None</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s1">fname</span><span class="s4">+</span><span class="s5">'.bz2'</span>
+    <span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s1">fname</span><span class="s4">+</span><span class="s5">'.xz'</span><span class="s3">) </span><span class="s2">and </span><span class="s1">lzma </span><span class="s2">is not None</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s1">fname</span><span class="s4">+</span><span class="s5">'.xz'</span>
+
+    <span class="s2">return None</span>
+
+
+<span class="s2">def </span><span class="s1">OpenGzip</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;open fname, try fname.gz or fname.bz2 or fname.xz if fname does not exist, return file object or GzipFile or BZ2File object&quot;</span>
+    <span class="s1">fname </span><span class="s4">= </span><span class="s1">get_gzip_filename</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">)</span>
+    <span class="s1">fo </span><span class="s4">= </span><span class="s2">None</span>
+    <span class="s2">if not </span><span class="s1">fname</span><span class="s4">:</span>
+        <span class="s2">return None</span>
+    <span class="s2">if </span><span class="s1">fname</span><span class="s3">.</span><span class="s1">endswith</span><span class="s3">(</span><span class="s5">'.gz'</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">fo </span><span class="s4">= </span><span class="s1">gzip</span><span class="s3">.</span><span class="s1">GzipFile</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">)</span>
+    <span class="s2">elif </span><span class="s1">fname</span><span class="s3">.</span><span class="s1">endswith</span><span class="s3">(</span><span class="s5">'.bz2'</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">fo </span><span class="s4">= </span><span class="s1">bz2</span><span class="s3">.</span><span class="s1">BZ2File</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">)</span>
+    <span class="s2">elif </span><span class="s1">fname</span><span class="s3">.</span><span class="s1">endswith</span><span class="s3">(</span><span class="s5">'.xz'</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">fo </span><span class="s4">= </span><span class="s1">lzma</span><span class="s3">.</span><span class="s1">open</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">)</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s1">fo </span><span class="s4">= </span><span class="s1">io</span><span class="s3">.</span><span class="s1">open</span><span class="s3">(</span><span class="s1">fname</span><span class="s3">, </span><span class="s1">encoding</span><span class="s4">=</span><span class="s5">'utf-8'</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">fo</span>
+    <span class="s2">if </span><span class="s1">fo</span><span class="s4">:</span>
+        <span class="s0"># we cannot use TextIOWrapper, since it needs read1 method not implemented by gzip|bz2</span>
+        <span class="s1">fo </span><span class="s4">= </span><span class="s1">codecs</span><span class="s3">.</span><span class="s1">getreader</span><span class="s3">(</span><span class="s5">'utf-8'</span><span class="s3">)(</span><span class="s1">fo</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">fo</span>
+
+<span class="s2">def </span><span class="s1">get_unicode_cur_version</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s0"># return current version of the Unicode standard, hardwired for now</span>
+    <span class="s2">return </span><span class="s5">'14.0.0'</span>
+
+<span class="s2">def </span><span class="s1">get_unicodedata_url</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s1">unicode_version </span><span class="s4">= </span><span class="s1">get_unicode_cur_version</span><span class="s3">()</span>
+    <span class="s1">url </span><span class="s4">= </span><span class="s5">'http://www.unicode.org/Public/{}/ucd/UnicodeData.txt'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">unicode_version</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">url</span>
+
+<span class="s2">def </span><span class="s1">download_unicodedata</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s1">url </span><span class="s4">= </span><span class="s1">get_unicodedata_url</span><span class="s3">()</span>
+    <span class="s1">out</span><span class="s3">(</span><span class="s5">'Downloading UnicodeData.txt from '</span><span class="s3">, </span><span class="s1">url</span><span class="s3">, </span><span class="s5">'\n'</span><span class="s3">)</span>
+    <span class="s1">HomeDir </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">expanduser</span><span class="s3">(</span><span class="s5">'~/.unicode'</span><span class="s3">)</span>
+    <span class="s1">HomeUnicodeData </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">HomeDir</span><span class="s3">, </span><span class="s5">&quot;UnicodeData.txt.gz&quot;</span><span class="s3">)</span>
+
+    <span class="s0"># we want to minimize the chance of leaving a corrupted file around</span>
+    <span class="s1">tmp_file </span><span class="s4">= </span><span class="s1">HomeUnicodeData</span><span class="s4">+</span><span class="s5">'.tmp'</span>
+    <span class="s2">try</span><span class="s4">:</span>
+        <span class="s2">if not </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s1">HomeDir</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">makedirs</span><span class="s3">(</span><span class="s1">HomeDir</span><span class="s3">)</span>
+        <span class="s1">response </span><span class="s4">= </span><span class="s1">urlopen</span><span class="s3">(</span><span class="s1">url</span><span class="s3">)</span>
+        <span class="s1">r </span><span class="s4">= </span><span class="s1">response</span><span class="s3">.</span><span class="s1">getcode</span><span class="s3">()</span>
+        <span class="s2">if </span><span class="s1">r </span><span class="s4">!= </span><span class="s7">200</span><span class="s4">:</span>
+            <span class="s0"># this is handled automatically in python3, the exception will be raised by urlopen</span>
+            <span class="s2">raise </span><span class="s1">IOError</span><span class="s3">(</span><span class="s5">'HTTP response code '</span><span class="s4">+</span><span class="s1">str</span><span class="s3">(</span><span class="s1">r</span><span class="s3">))</span>
+        <span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s1">HomeUnicodeData</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">out</span><span class="s3">(</span><span class="s1">HomeUnicodeData</span><span class="s3">, </span><span class="s5">' already exists, but downloading as requested\n'</span><span class="s3">)</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s5">'downloading...'</span><span class="s3">)</span>
+        <span class="s1">shutil</span><span class="s3">.</span><span class="s1">copyfileobj</span><span class="s3">(</span><span class="s1">response</span><span class="s3">, </span><span class="s1">gzip</span><span class="s3">.</span><span class="s1">open</span><span class="s3">(</span><span class="s1">tmp_file</span><span class="s3">, </span><span class="s5">'wb'</span><span class="s3">))</span>
+        <span class="s1">shutil</span><span class="s3">.</span><span class="s1">move</span><span class="s3">(</span><span class="s1">tmp_file</span><span class="s3">, </span><span class="s1">HomeUnicodeData</span><span class="s3">)</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">HomeUnicodeData</span><span class="s3">, </span><span class="s5">' downloaded\n'</span><span class="s3">)</span>
+    <span class="s2">finally</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">exists</span><span class="s3">(</span><span class="s1">tmp_file</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">os</span><span class="s3">.</span><span class="s1">remove</span><span class="s3">(</span><span class="s1">tmp_file</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">GrepInNames</span><span class="s3">(</span><span class="s1">pattern</span><span class="s3">, </span><span class="s1">prefill_cache</span><span class="s4">=</span><span class="s2">False</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">f </span><span class="s4">= </span><span class="s2">None</span>
+    <span class="s2">for </span><span class="s1">name </span><span class="s2">in </span><span class="s1">UnicodeDataFileNames</span><span class="s4">:</span>
+        <span class="s1">f </span><span class="s4">= </span><span class="s1">OpenGzip</span><span class="s3">(</span><span class="s1">name</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">f </span><span class="s4">!= </span><span class="s2">None</span><span class="s4">:</span>
+            <span class="s2">break</span>
+    <span class="s2">if </span><span class="s1">f</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">pattern</span><span class="s3">.</span><span class="s1">endswith</span><span class="s3">(</span><span class="s5">'$'</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">pattern </span><span class="s4">= </span><span class="s1">pattern</span><span class="s6">[</span><span class="s4">:-</span><span class="s7">1</span><span class="s6">]</span><span class="s4">+</span><span class="s5">';'</span>
+    <span class="s1">pat </span><span class="s4">= </span><span class="s1">re</span><span class="s3">.</span><span class="s1">compile</span><span class="s3">(</span><span class="s1">pattern</span><span class="s3">, </span><span class="s1">re</span><span class="s3">.</span><span class="s1">I</span><span class="s3">)</span>
+
+    <span class="s2">if not </span><span class="s1">f</span><span class="s4">:</span>
+        <span class="s1">out</span><span class="s3">( </span><span class="s5">&quot;&quot;&quot; 
+Cannot find UnicodeData.txt, please place it into 
+/usr/share/unidata/UnicodeData.txt, 
+/usr/share/unicode/UnicodeData.txt, ~/.unicode/ or current 
+working directory (optionally you can gzip, bzip2 or xz it). 
+Without the file, searching will be much slower. 
+ 
+You can donwload the file from {} (or replace {} with current Unicode version); or run {} --download 
+ 
+&quot;&quot;&quot;</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">get_unicodedata_url</span><span class="s3">(), </span><span class="s1">get_unicode_cur_version</span><span class="s3">(), </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">argv</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s3">))</span>
+
+    <span class="s2">if </span><span class="s1">prefill_cache</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">f</span><span class="s4">:</span>
+            <span class="s2">for </span><span class="s1">l </span><span class="s2">in </span><span class="s1">f</span><span class="s4">:</span>
+                <span class="s2">if </span><span class="s1">pat</span><span class="s3">.</span><span class="s1">search</span><span class="s3">(</span><span class="s1">l</span><span class="s3">)</span><span class="s4">:</span>
+                    <span class="s1">r </span><span class="s4">= </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">int</span><span class="s3">(</span><span class="s1">l</span><span class="s3">.</span><span class="s1">split</span><span class="s3">(</span><span class="s5">';'</span><span class="s3">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">))</span>
+                    <span class="s1">linecache</span><span class="s6">[</span><span class="s1">r</span><span class="s6">] </span><span class="s4">= </span><span class="s1">l</span>
+            <span class="s1">f</span><span class="s3">.</span><span class="s1">close</span><span class="s3">()</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">f</span><span class="s4">:</span>
+            <span class="s2">for </span><span class="s1">l </span><span class="s2">in </span><span class="s1">f</span><span class="s4">:</span>
+                <span class="s2">if </span><span class="s1">pat</span><span class="s3">.</span><span class="s1">search</span><span class="s3">(</span><span class="s1">l</span><span class="s3">)</span><span class="s4">:</span>
+                    <span class="s1">r </span><span class="s4">= </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">int</span><span class="s3">(</span><span class="s1">l</span><span class="s3">.</span><span class="s1">split</span><span class="s3">(</span><span class="s5">';'</span><span class="s3">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">))</span>
+                    <span class="s1">linecache</span><span class="s6">[</span><span class="s1">r</span><span class="s6">] </span><span class="s4">= </span><span class="s1">l</span>
+                    <span class="s2">yield </span><span class="s1">r</span>
+            <span class="s1">f</span><span class="s3">.</span><span class="s1">close</span><span class="s3">()</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">maxunicode</span><span class="s3">)</span><span class="s4">:</span>
+                <span class="s2">try</span><span class="s4">:</span>
+                    <span class="s1">name </span><span class="s4">= </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">name</span><span class="s3">(</span><span class="s1">chr</span><span class="s3">(</span><span class="s1">i</span><span class="s3">))</span>
+                    <span class="s2">if </span><span class="s1">pat</span><span class="s3">.</span><span class="s1">search</span><span class="s3">(</span><span class="s1">name</span><span class="s3">)</span><span class="s4">:</span>
+                        <span class="s2">yield </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">i</span><span class="s3">)</span>
+                <span class="s2">except </span><span class="s1">ValueError</span><span class="s4">:</span>
+                    <span class="s2">pass</span>
+
+<span class="s2">def </span><span class="s1">valfromcp</span><span class="s3">(</span><span class="s1">n</span><span class="s3">, </span><span class="s1">cp</span><span class="s4">=</span><span class="s2">None</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;if cp is defined, then the 'n' is considered to be from that codepage and is converted accordingly&quot;</span>
+    <span class="s5">&quot;the output is a list of codepoints (integers)&quot;</span>
+    <span class="s2">if </span><span class="s1">cp</span><span class="s4">:</span>
+        <span class="s1">xh </span><span class="s4">= </span><span class="s5">'%x' </span><span class="s4">%</span><span class="s1">n</span>
+        <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">xh</span><span class="s3">) </span><span class="s4">% </span><span class="s7">2</span><span class="s4">: </span><span class="s0"># pad hexadecimal representation with a zero</span>
+            <span class="s1">xh </span><span class="s4">= </span><span class="s5">'0'</span><span class="s4">+</span><span class="s1">xh</span>
+        <span class="s1">cps </span><span class="s4">= </span><span class="s3">( </span><span class="s6">[</span><span class="s1">xh</span><span class="s6">[</span><span class="s1">i</span><span class="s4">:</span><span class="s1">i</span><span class="s4">+</span><span class="s7">2</span><span class="s6">] </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">0</span><span class="s3">,</span><span class="s1">len</span><span class="s3">(</span><span class="s1">xh</span><span class="s3">),</span><span class="s7">2</span><span class="s3">)</span><span class="s6">] </span><span class="s3">)</span>
+        <span class="s1">cps </span><span class="s4">= </span><span class="s3">( </span><span class="s1">int</span><span class="s3">(</span><span class="s1">i</span><span class="s3">, </span><span class="s7">16</span><span class="s3">) </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">cps</span><span class="s3">)</span>
+        <span class="s0"># we have to use chr_orig (it's original chr for python2) and not 'B'</span>
+        <span class="s0"># because unicode_literals it will be unicode, which</span>
+        <span class="s0"># is not permitted in struct.pack in python2.6</span>
+        <span class="s1">cps </span><span class="s4">= </span><span class="s3">( </span><span class="s1">struct</span><span class="s3">.</span><span class="s1">pack</span><span class="s3">(</span><span class="s1">chr_orig</span><span class="s3">(</span><span class="s7">0x42</span><span class="s3">),</span><span class="s1">i</span><span class="s3">) </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">cps </span><span class="s3">) </span><span class="s0"># this works in both python3 and python2, unlike bytes([i])</span>
+        <span class="s1">cps </span><span class="s4">= </span><span class="s5">b''</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">cps</span><span class="s3">)</span>
+        <span class="s1">cps </span><span class="s4">= </span><span class="s1">cps</span><span class="s3">.</span><span class="s1">decode</span><span class="s3">(</span><span class="s1">cp</span><span class="s3">)</span>
+        <span class="s1">cps </span><span class="s4">= </span><span class="s6">[</span><span class="s1">ord</span><span class="s3">(</span><span class="s1">x</span><span class="s3">) </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">cps</span><span class="s6">]</span>
+        <span class="s2">return </span><span class="s1">cps</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s6">[</span><span class="s1">n</span><span class="s6">]</span>
+
+<span class="s2">def </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">n</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">try</span><span class="s4">:</span>
+        <span class="s1">r </span><span class="s4">= </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">n</span><span class="s3">)</span>
+        <span class="s2">return </span><span class="s1">r</span>
+    <span class="s2">except </span><span class="s1">OverflowError</span><span class="s4">:</span>
+        <span class="s1">traceback</span><span class="s3">.</span><span class="s1">print_exc</span><span class="s3">()</span>
+        <span class="s1">error</span><span class="s3">(</span><span class="s5">&quot;The codepoint is too big - it does not fit into an int.&quot;</span><span class="s3">)</span>
+    <span class="s2">except </span><span class="s1">ValueError</span><span class="s4">:</span>
+        <span class="s1">traceback</span><span class="s3">.</span><span class="s1">print_exc</span><span class="s3">()</span>
+        <span class="s1">err </span><span class="s4">= </span><span class="s5">&quot;The codepoint is too big.&quot;</span>
+        <span class="s2">if </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">maxunicode </span><span class="s4">&lt;= </span><span class="s7">0xffff</span><span class="s4">:</span>
+            <span class="s1">err </span><span class="s4">+= </span><span class="s5">&quot;\nPerhaps your python interpreter is not compiled with wide unicode characters.&quot;</span>
+        <span class="s1">error</span><span class="s3">(</span><span class="s1">err</span><span class="s3">)</span>
+
+
+<span class="s2">def </span><span class="s1">guesstype</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">if not </span><span class="s1">arg</span><span class="s4">: </span><span class="s0"># empty string</span>
+        <span class="s2">return </span><span class="s5">'empty string'</span><span class="s3">, </span><span class="s1">arg</span>
+    <span class="s2">elif not </span><span class="s1">is_ascii</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s5">'string'</span><span class="s3">, </span><span class="s1">arg</span>
+    <span class="s2">elif </span><span class="s1">arg</span><span class="s6">[</span><span class="s4">:</span><span class="s7">2</span><span class="s6">]</span><span class="s4">==</span><span class="s5">'U+' </span><span class="s2">or </span><span class="s1">arg</span><span class="s6">[</span><span class="s4">:</span><span class="s7">2</span><span class="s6">]</span><span class="s4">==</span><span class="s5">'u+'</span><span class="s4">: </span><span class="s0"># it is hexadecimal number</span>
+        <span class="s2">try</span><span class="s4">:</span>
+            <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s6">[</span><span class="s7">2</span><span class="s4">:</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">val</span><span class="s4">&gt;</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">maxunicode</span><span class="s4">:</span>
+                <span class="s2">return </span><span class="s5">'regexp'</span><span class="s3">, </span><span class="s1">arg</span>
+            <span class="s2">else</span><span class="s4">:</span>
+                <span class="s2">return </span><span class="s5">'hexadecimal'</span><span class="s3">, </span><span class="s1">arg</span><span class="s6">[</span><span class="s7">2</span><span class="s4">:</span><span class="s6">]</span>
+        <span class="s2">except </span><span class="s1">ValueError</span><span class="s4">:</span>
+            <span class="s2">return </span><span class="s5">'regexp'</span><span class="s3">, </span><span class="s1">arg</span>
+    <span class="s2">elif </span><span class="s1">arg</span><span class="s6">[</span><span class="s7">0</span><span class="s6">] </span><span class="s2">in </span><span class="s5">&quot;Uu&quot; </span><span class="s2">and </span><span class="s1">len</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">)</span><span class="s4">&gt;</span><span class="s7">4</span><span class="s4">:</span>
+        <span class="s2">try</span><span class="s4">:</span>
+            <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s6">[</span><span class="s7">1</span><span class="s4">:</span><span class="s6">]</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">val</span><span class="s4">&gt;</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">maxunicode</span><span class="s4">:</span>
+                <span class="s2">return </span><span class="s5">'regexp'</span><span class="s3">, </span><span class="s1">arg</span>
+            <span class="s2">else</span><span class="s4">:</span>
+                <span class="s2">return </span><span class="s5">'hexadecimal'</span><span class="s3">, </span><span class="s1">arg</span><span class="s6">[</span><span class="s7">1</span><span class="s4">:</span><span class="s6">]</span>
+        <span class="s2">except </span><span class="s1">ValueError</span><span class="s4">:</span>
+            <span class="s2">return </span><span class="s5">'regexp'</span><span class="s3">, </span><span class="s1">arg</span>
+    <span class="s2">elif </span><span class="s1">len</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">)</span><span class="s4">&gt;=</span><span class="s7">4</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">) </span><span class="s2">in </span><span class="s3">(</span><span class="s7">8</span><span class="s3">, </span><span class="s7">16</span><span class="s3">, </span><span class="s7">24</span><span class="s3">, </span><span class="s7">32</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s2">if </span><span class="s1">all</span><span class="s3">(</span><span class="s1">x </span><span class="s2">in </span><span class="s5">'01' </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">arg</span><span class="s3">)</span><span class="s4">:</span>
+                <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">, </span><span class="s7">2</span><span class="s3">)</span>
+                <span class="s2">if </span><span class="s1">val</span><span class="s4">&lt;=</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">maxunicode</span><span class="s4">:</span>
+                    <span class="s2">return </span><span class="s5">'binary'</span><span class="s3">, </span><span class="s1">arg</span>
+        <span class="s2">try</span><span class="s4">:</span>
+            <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">val</span><span class="s4">&gt;</span><span class="s1">sys</span><span class="s3">.</span><span class="s1">maxunicode</span><span class="s4">:</span>
+                <span class="s2">return </span><span class="s5">'regexp'</span><span class="s3">, </span><span class="s1">arg</span>
+            <span class="s2">else</span><span class="s4">:</span>
+                <span class="s2">return </span><span class="s5">'hexadecimal'</span><span class="s3">, </span><span class="s1">arg</span>
+        <span class="s2">except </span><span class="s1">ValueError</span><span class="s4">:</span>
+            <span class="s2">return </span><span class="s5">'regexp'</span><span class="s3">, </span><span class="s1">arg</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s5">'string'</span><span class="s3">, </span><span class="s1">arg</span>
+
+<span class="s2">def </span><span class="s1">process</span><span class="s3">(</span><span class="s1">arglist</span><span class="s3">, </span><span class="s1">t</span><span class="s3">, </span><span class="s1">fromcp</span><span class="s4">=</span><span class="s2">None</span><span class="s3">, </span><span class="s1">prefill_cache</span><span class="s4">=</span><span class="s2">False</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0"># build a list of values, so that we can combine queries like</span>
+    <span class="s0"># LATIN ALPHA and search for LATIN.*ALPHA and not names that</span>
+    <span class="s0"># contain either LATIN or ALPHA</span>
+    <span class="s1">result </span><span class="s4">= </span><span class="s6">[]</span>
+    <span class="s1">names_query </span><span class="s4">= </span><span class="s6">[] </span><span class="s0"># reserved for queries in names - i.e. -r</span>
+    <span class="s2">for </span><span class="s1">arg_i </span><span class="s2">in </span><span class="s1">arglist</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">t</span><span class="s4">==</span><span class="s2">None</span><span class="s4">:</span>
+            <span class="s1">tp</span><span class="s3">, </span><span class="s1">arg </span><span class="s4">= </span><span class="s1">guesstype</span><span class="s3">(</span><span class="s1">arg_i</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">tp </span><span class="s4">== </span><span class="s5">'regexp'</span><span class="s4">:</span>
+                <span class="s0"># if the first argument is guessed to be a regexp, add</span>
+                <span class="s0"># all the following arguments to the regular expression -</span>
+                <span class="s0"># this is probably what you wanted, e.g.</span>
+                <span class="s0"># 'unicode cyrillic be' will now search for the 'cyrillic.*be' regular expression</span>
+                <span class="s1">t </span><span class="s4">= </span><span class="s5">'regexp'</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">tp</span><span class="s3">, </span><span class="s1">arg </span><span class="s4">= </span><span class="s1">t</span><span class="s3">, </span><span class="s1">arg_i</span>
+        <span class="s2">if </span><span class="s1">tp</span><span class="s4">==</span><span class="s5">'hexadecimal'</span><span class="s4">:</span>
+            <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span>
+            <span class="s1">vals </span><span class="s4">= </span><span class="s1">valfromcp</span><span class="s3">(</span><span class="s1">val</span><span class="s3">, </span><span class="s1">fromcp</span><span class="s3">)</span>
+            <span class="s2">for </span><span class="s1">val </span><span class="s2">in </span><span class="s1">vals</span><span class="s4">:</span>
+                <span class="s1">r </span><span class="s4">= </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">val</span><span class="s3">)</span>
+                <span class="s1">result</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">r</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">tp</span><span class="s4">==</span><span class="s5">'decimal'</span><span class="s4">:</span>
+            <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">, </span><span class="s7">10</span><span class="s3">)</span>
+            <span class="s1">vals </span><span class="s4">= </span><span class="s1">valfromcp</span><span class="s3">(</span><span class="s1">val</span><span class="s3">, </span><span class="s1">fromcp</span><span class="s3">)</span>
+            <span class="s2">for </span><span class="s1">val </span><span class="s2">in </span><span class="s1">vals</span><span class="s4">:</span>
+                <span class="s1">r </span><span class="s4">= </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">val</span><span class="s3">)</span>
+                <span class="s1">result</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">r</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">tp</span><span class="s4">==</span><span class="s5">'octal'</span><span class="s4">:</span>
+            <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">, </span><span class="s7">8</span><span class="s3">)</span>
+            <span class="s1">vals </span><span class="s4">= </span><span class="s1">valfromcp</span><span class="s3">(</span><span class="s1">val</span><span class="s3">, </span><span class="s1">fromcp</span><span class="s3">)</span>
+            <span class="s2">for </span><span class="s1">val </span><span class="s2">in </span><span class="s1">vals</span><span class="s4">:</span>
+                <span class="s1">r </span><span class="s4">= </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">val</span><span class="s3">)</span>
+                <span class="s1">result</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">r</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">tp</span><span class="s4">==</span><span class="s5">'binary'</span><span class="s4">:</span>
+            <span class="s1">val </span><span class="s4">= </span><span class="s1">int</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">, </span><span class="s7">2</span><span class="s3">)</span>
+            <span class="s1">vals </span><span class="s4">= </span><span class="s1">valfromcp</span><span class="s3">(</span><span class="s1">val</span><span class="s3">, </span><span class="s1">fromcp</span><span class="s3">)</span>
+            <span class="s2">for </span><span class="s1">val </span><span class="s2">in </span><span class="s1">vals</span><span class="s4">:</span>
+                <span class="s1">r </span><span class="s4">= </span><span class="s1">myunichr</span><span class="s3">(</span><span class="s1">val</span><span class="s3">)</span>
+                <span class="s1">result</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">r</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">tp</span><span class="s4">==</span><span class="s5">'regexp'</span><span class="s4">:</span>
+            <span class="s1">names_query</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">arg</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">tp</span><span class="s4">==</span><span class="s5">'string'</span><span class="s4">:</span>
+            <span class="s1">unirepr </span><span class="s4">= </span><span class="s1">arg</span>
+            <span class="s2">for </span><span class="s1">r </span><span class="s2">in </span><span class="s1">unirepr</span><span class="s4">:</span>
+                <span class="s1">result</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">r</span><span class="s3">)</span>
+        <span class="s2">elif </span><span class="s1">tp</span><span class="s4">==</span><span class="s5">'empty string'</span><span class="s4">:</span>
+            <span class="s2">pass </span><span class="s0"># do not do anything for an empty string</span>
+    <span class="s2">if </span><span class="s1">result </span><span class="s2">and </span><span class="s1">prefill_cache</span><span class="s4">:</span>
+        <span class="s1">hx </span><span class="s4">= </span><span class="s5">'|'</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s5">'%04X'</span><span class="s4">%</span><span class="s1">ord</span><span class="s3">(</span><span class="s1">x</span><span class="s3">) </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">result</span><span class="s3">)</span>
+        <span class="s1">list</span><span class="s3">(</span><span class="s1">GrepInNames</span><span class="s3">(</span><span class="s1">hx</span><span class="s3">, </span><span class="s1">prefill_cache</span><span class="s4">=</span><span class="s2">True</span><span class="s3">))</span>
+    <span class="s2">if </span><span class="s1">names_query</span><span class="s4">:</span>
+        <span class="s1">query </span><span class="s4">= </span><span class="s5">'.*'</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">names_query</span><span class="s3">)</span>
+        <span class="s2">for </span><span class="s1">r </span><span class="s2">in </span><span class="s1">GrepInNames</span><span class="s3">(</span><span class="s1">query</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">result</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">r</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">result</span>
+
+<span class="s2">def </span><span class="s1">maybe_colours</span><span class="s3">(</span><span class="s1">colour</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">use_colour</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s1">colours</span><span class="s6">[</span><span class="s1">colour</span><span class="s6">]</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s2">return </span><span class="s5">&quot;&quot;</span>
+
+<span class="s0"># format key and value</span>
+<span class="s2">def </span><span class="s1">printkv</span><span class="s3">(</span><span class="s4">*</span><span class="s1">l</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">0</span><span class="s3">, </span><span class="s1">len</span><span class="s3">(</span><span class="s1">l</span><span class="s3">), </span><span class="s7">2</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">i</span><span class="s4">&lt;</span><span class="s1">len</span><span class="s3">(</span><span class="s1">l</span><span class="s3">)</span><span class="s4">-</span><span class="s7">2</span><span class="s4">:</span>
+            <span class="s1">sep </span><span class="s4">= </span><span class="s5">&quot;  &quot;</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">sep </span><span class="s4">= </span><span class="s5">&quot;\n&quot;</span>
+        <span class="s1">k</span><span class="s3">, </span><span class="s1">v </span><span class="s4">= </span><span class="s1">l</span><span class="s6">[</span><span class="s1">i</span><span class="s6">]</span><span class="s3">, </span><span class="s1">l</span><span class="s6">[</span><span class="s1">i</span><span class="s4">+</span><span class="s7">1</span><span class="s6">]</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">maybe_colours</span><span class="s3">(</span><span class="s5">'green'</span><span class="s3">))</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">k</span><span class="s3">)</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s5">&quot;: &quot;</span><span class="s3">)</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">maybe_colours</span><span class="s3">(</span><span class="s5">'default'</span><span class="s3">))</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">str</span><span class="s3">(</span><span class="s1">v</span><span class="s3">))</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">sep</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">print_characters</span><span class="s3">(</span><span class="s1">clist</span><span class="s3">, </span><span class="s1">maxcount</span><span class="s3">, </span><span class="s1">format_string</span><span class="s3">, </span><span class="s1">query_wikipedia</span><span class="s4">=</span><span class="s7">0</span><span class="s3">, </span><span class="s1">query_wiktionary</span><span class="s4">=</span><span class="s7">0</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">&quot;&quot;&quot;query_wikipedia or query_wiktionary: 
+            0 - don't 
+            1 - spawn browser 
+    &quot;&quot;&quot;</span>
+    <span class="s1">counter </span><span class="s4">= </span><span class="s7">0</span>
+
+    <span class="s2">for </span><span class="s1">colour_key </span><span class="s2">in </span><span class="s1">colours</span><span class="s3">.</span><span class="s1">keys</span><span class="s3">()</span><span class="s4">:</span>
+        <span class="s1">locals</span><span class="s3">()</span><span class="s6">[</span><span class="s1">colour_key</span><span class="s6">] </span><span class="s4">= </span><span class="s1">maybe_colours</span><span class="s3">(</span><span class="s1">colour_key</span><span class="s3">)</span>
+
+    <span class="s2">for </span><span class="s1">c </span><span class="s2">in </span><span class="s1">clist</span><span class="s4">:</span>
+
+        <span class="s2">if </span><span class="s1">query_wikipedia </span><span class="s2">or </span><span class="s1">query_wiktionary</span><span class="s4">:</span>
+            <span class="s1">ch </span><span class="s4">= </span><span class="s1">urlquote</span><span class="s3">(</span><span class="s1">c</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s5">'utf-8'</span><span class="s3">)) </span><span class="s0"># wikipedia uses UTF-8 in names</span>
+            <span class="s1">wiki_base_url </span><span class="s4">= </span><span class="s5">'http://en.wikipedia.org/wiki/'</span>
+            <span class="s2">if </span><span class="s1">query_wiktionary</span><span class="s4">:</span>
+                <span class="s1">wiki_base_url </span><span class="s4">= </span><span class="s5">'http://en.wiktionary.org/wiki/'</span>
+            <span class="s1">wiki_url </span><span class="s4">= </span><span class="s1">wiki_base_url</span><span class="s4">+</span><span class="s1">ch</span>
+            <span class="s1">webbrowser</span><span class="s3">.</span><span class="s1">open</span><span class="s3">(</span><span class="s1">wiki_url</span><span class="s3">)</span>
+            <span class="s1">query_wikipedia </span><span class="s4">= </span><span class="s1">query_wiktionary </span><span class="s4">= </span><span class="s7">0 </span><span class="s0"># query only the very first character</span>
+
+        <span class="s2">if </span><span class="s1">maxcount</span><span class="s4">:</span>
+            <span class="s1">counter </span><span class="s4">+= </span><span class="s7">1</span>
+        <span class="s2">if </span><span class="s1">counter </span><span class="s4">&gt; </span><span class="s1">options</span><span class="s3">.</span><span class="s1">maxcount</span><span class="s4">:</span>
+            <span class="s1">sys</span><span class="s3">.</span><span class="s1">stdout</span><span class="s3">.</span><span class="s1">flush</span><span class="s3">()</span>
+            <span class="s1">sys</span><span class="s3">.</span><span class="s1">stderr</span><span class="s3">.</span><span class="s1">write</span><span class="s3">(</span><span class="s5">&quot;\nToo many characters to display, more than %s, use --max 0 (or other value) option to change it\n&quot; </span><span class="s4">% </span><span class="s1">options</span><span class="s3">.</span><span class="s1">maxcount</span><span class="s3">)</span>
+            <span class="s2">return</span>
+        <span class="s1">properties </span><span class="s4">= </span><span class="s1">get_unicode_properties</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span>
+        <span class="s1">ordc </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'name'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">name </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'name'</span><span class="s6">]</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">name </span><span class="s4">= </span><span class="s5">&quot; - No such unicode character name in database&quot;</span>
+        <span class="s2">if </span><span class="s7">0xd800 </span><span class="s4">&lt;= </span><span class="s1">ordc </span><span class="s4">&lt;= </span><span class="s7">0xdfff</span><span class="s4">: </span><span class="s0"># surrogate</span>
+            <span class="s1">utf8 </span><span class="s4">= </span><span class="s1">utf16be </span><span class="s4">= </span><span class="s5">'N/A'</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">utf8 </span><span class="s4">= </span><span class="s5">' '</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s6">[</span><span class="s3">(</span><span class="s5">&quot;%02x&quot; </span><span class="s4">% </span><span class="s1">ord23</span><span class="s3">(</span><span class="s1">x</span><span class="s3">)) </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">c</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s5">'utf-8'</span><span class="s3">)</span><span class="s6">]</span><span class="s3">)</span>
+            <span class="s1">utf16be </span><span class="s4">= </span><span class="s5">''</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s6">[</span><span class="s3">(</span><span class="s5">&quot;%02x&quot; </span><span class="s4">% </span><span class="s1">ord23</span><span class="s3">(</span><span class="s1">x</span><span class="s3">)) </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">c</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s5">'utf-16be'</span><span class="s3">)</span><span class="s6">]</span><span class="s3">)</span>
+        <span class="s1">decimal </span><span class="s4">= </span><span class="s5">&quot;&amp;#%s;&quot; </span><span class="s4">% </span><span class="s1">ordc</span>
+        <span class="s1">octal </span><span class="s4">= </span><span class="s5">&quot;\\0%o&quot; </span><span class="s4">% </span><span class="s1">ordc</span>
+
+        <span class="s1">addcharset </span><span class="s4">= </span><span class="s1">options</span><span class="s3">.</span><span class="s1">addcharset</span>
+        <span class="s2">if </span><span class="s1">addcharset</span><span class="s4">:</span>
+            <span class="s2">try</span><span class="s4">:</span>
+                <span class="s1">in_additional_charset </span><span class="s4">= </span><span class="s5">' '</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s6">[</span><span class="s3">(</span><span class="s5">&quot;%02x&quot; </span><span class="s4">% </span><span class="s1">ord23</span><span class="s3">(</span><span class="s1">x</span><span class="s3">)) </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">c</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s1">addcharset</span><span class="s3">)</span><span class="s6">] </span><span class="s3">)</span>
+            <span class="s2">except </span><span class="s1">UnicodeError</span><span class="s4">:</span>
+                <span class="s1">in_additional_charset </span><span class="s4">= </span><span class="s5">&quot;NONE&quot;</span>
+
+        <span class="s1">category </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'category'</span><span class="s6">]</span>
+        <span class="s1">category_desc </span><span class="s4">= </span><span class="s1">general_category</span><span class="s6">[</span><span class="s1">category</span><span class="s6">]</span>
+        <span class="s2">if </span><span class="s1">category </span><span class="s4">== </span><span class="s5">'Cc'</span><span class="s4">: </span><span class="s0"># control character</span>
+            <span class="s1">pchar </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'combining'</span><span class="s6">]</span><span class="s4">:</span>
+                <span class="s1">pchar </span><span class="s4">= </span><span class="s5">&quot; &quot;</span><span class="s4">+</span><span class="s1">c</span>
+            <span class="s2">else</span><span class="s4">:</span>
+                <span class="s1">pchar </span><span class="s4">= </span><span class="s1">c</span>
+
+        <span class="s1">uppercase </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'uppercase'</span><span class="s6">]</span>
+        <span class="s1">lowercase </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'lowercase'</span><span class="s6">]</span>
+        <span class="s1">opt_uppercase </span><span class="s4">= </span><span class="s1">opt_lowercase </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">flipcase </span><span class="s4">= </span><span class="s2">None</span>
+        <span class="s2">if </span><span class="s1">uppercase</span><span class="s4">:</span>
+            <span class="s1">ord_uppercase </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'uppercase'</span><span class="s6">]</span><span class="s3">)</span>
+            <span class="s1">opt_uppercase </span><span class="s4">= </span><span class="s5">'\n{green}Uppercase:{default} {ord_uppercase:04X}'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s4">**</span><span class="s1">locals</span><span class="s3">())</span>
+            <span class="s1">flipcase </span><span class="s4">= </span><span class="s1">uppercase</span>
+        <span class="s2">elif </span><span class="s1">lowercase</span><span class="s4">:</span>
+            <span class="s1">ord_lowercase </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'lowercase'</span><span class="s6">]</span><span class="s3">)</span>
+            <span class="s1">opt_lowercase </span><span class="s4">= </span><span class="s5">'\n{green}Lowercase:{default} {ord_lowercase:04X}'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s4">**</span><span class="s1">locals</span><span class="s3">())</span>
+            <span class="s1">flipcase </span><span class="s4">= </span><span class="s1">lowercase</span>
+
+        <span class="s1">opt_numeric </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">numeric_desc </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'numeric_value'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">opt_numeric </span><span class="s4">= </span><span class="s5">'Numeric value: '</span>
+            <span class="s1">numeric_desc </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'numeric_value'</span><span class="s6">]</span><span class="s4">+</span><span class="s5">'\n'</span>
+        <span class="s1">opt_digit </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">digit_desc </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'digit_value'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">opt_digit </span><span class="s4">= </span><span class="s5">'Digit value: '</span>
+            <span class="s1">digit_desc </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'digit_value'</span><span class="s6">]</span><span class="s4">+</span><span class="s5">'\n'</span>
+
+        <span class="s1">opt_bidi </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">bidi_desc </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">bidi </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'bidi'</span><span class="s6">]</span>
+        <span class="s1">bidi_desc </span><span class="s4">= </span><span class="s1">bidi_category</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s1">bidi</span><span class="s3">, </span><span class="s1">bidi</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">bidi</span><span class="s4">:</span>
+            <span class="s1">opt_bidi </span><span class="s4">= </span><span class="s5">'Bidi: '</span>
+            <span class="s1">bidi_desc </span><span class="s4">= </span><span class="s5">' ({0})\n'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">bidi_desc</span><span class="s3">)</span>
+        <span class="s1">mirrored_desc </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">mirrored </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'mirrored'</span><span class="s6">]</span>
+        <span class="s2">if </span><span class="s1">mirrored</span><span class="s4">:</span>
+            <span class="s1">mirrored_desc </span><span class="s4">= </span><span class="s5">'Character is mirrored\n'</span>
+        <span class="s1">opt_combining </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">comb </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'combining'</span><span class="s6">]</span>
+        <span class="s1">combining_desc </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s2">if </span><span class="s1">comb</span><span class="s4">:</span>
+            <span class="s1">opt_combining </span><span class="s4">= </span><span class="s5">'Combining: '</span>
+            <span class="s1">combining_desc </span><span class="s4">= </span><span class="s5">&quot;{comb} ({comb_class})\n&quot;</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">comb</span><span class="s4">=</span><span class="s1">comb</span><span class="s3">, </span><span class="s1">comb_class</span><span class="s4">=</span><span class="s1">comb_classes</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s1">comb</span><span class="s3">, </span><span class="s5">'?'</span><span class="s3">))</span>
+
+        <span class="s1">opt_decomp </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">decomp_desc </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">decomp </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'decomposition'</span><span class="s6">]</span>
+        <span class="s2">if </span><span class="s1">decomp</span><span class="s4">:</span>
+            <span class="s1">opt_decomp </span><span class="s4">= </span><span class="s5">'Decomposition: '</span>
+            <span class="s1">decomp_desc </span><span class="s4">= </span><span class="s1">decomp</span><span class="s4">+</span><span class="s5">'\n'</span>
+        <span class="s2">if </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'east_asian_width'</span><span class="s6">]</span><span class="s4">:</span>
+            <span class="s1">opt_eaw </span><span class="s4">= </span><span class="s5">'East Asian width: '</span>
+            <span class="s1">eaw </span><span class="s4">= </span><span class="s1">properties</span><span class="s6">[</span><span class="s5">'east_asian_width'</span><span class="s6">]</span>
+            <span class="s1">eaw_desc </span><span class="s4">= </span><span class="s5">'{eaw} ({desc})'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">eaw</span><span class="s4">=</span><span class="s1">eaw</span><span class="s3">, </span><span class="s1">desc</span><span class="s4">=</span><span class="s1">eaw_description</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s1">eaw</span><span class="s3">, </span><span class="s1">eaw</span><span class="s3">))</span>
+
+        <span class="s1">opt_unicode_block </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">opt_unicode_block_desc </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">unicode_block </span><span class="s4">= </span><span class="s1">get_unicode_block</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">unicode_block</span><span class="s4">:</span>
+            <span class="s1">low</span><span class="s3">, </span><span class="s1">high</span><span class="s3">, </span><span class="s1">desc </span><span class="s4">= </span><span class="s1">unicode_block</span>
+            <span class="s1">opt_unicode_block </span><span class="s4">= </span><span class="s5">'Unicode block: '</span>
+            <span class="s1">opt_unicode_block_desc </span><span class="s4">= </span><span class="s5">&quot;{low:04X}..{high:04X}; {desc}\n&quot;</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">low</span><span class="s4">=</span><span class="s1">low</span><span class="s3">,</span><span class="s1">high</span><span class="s4">=</span><span class="s1">high</span><span class="s3">,</span><span class="s1">desc</span><span class="s4">=</span><span class="s1">desc</span><span class="s3">)</span>
+
+        <span class="s2">if </span><span class="s1">addcharset</span><span class="s4">:</span>
+            <span class="s1">opt_additional </span><span class="s4">= </span><span class="s5">' {green}{addcharset}:{default} {in_additional_charset}'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s4">**</span><span class="s1">locals</span><span class="s3">())</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">opt_additional </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s2">if </span><span class="s1">flipcase</span><span class="s4">:</span>
+            <span class="s1">opt_flipcase </span><span class="s4">= </span><span class="s5">' ({flipcase})'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s4">**</span><span class="s1">locals</span><span class="s3">())</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">opt_flipcase </span><span class="s4">= </span><span class="s5">''</span>
+        <span class="s1">formatted_output </span><span class="s4">= </span><span class="s1">format_string</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s4">**</span><span class="s1">locals</span><span class="s3">())</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">formatted_output</span><span class="s3">)</span>
+
+
+        <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">verbosity</span><span class="s4">&gt;</span><span class="s7">0</span><span class="s4">:</span>
+            <span class="s1">uhp </span><span class="s4">= </span><span class="s1">get_unihan_properties</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span>
+            <span class="s2">for </span><span class="s1">key </span><span class="s2">in </span><span class="s1">uhp</span><span class="s4">:</span>
+                <span class="s1">printkv</span><span class="s3">(</span><span class="s1">key</span><span class="s3">, </span><span class="s1">uhp</span><span class="s6">[</span><span class="s1">key</span><span class="s6">]</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">get_east_asian_width</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">eaw </span><span class="s4">= </span><span class="s5">'east_asian_width' </span><span class="s2">in </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">__dict__ </span><span class="s2">and </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">east_asian_width</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span>
+    <span class="s2">return </span><span class="s1">eaw</span>
+
+<span class="s2">def </span><span class="s1">print_block</span><span class="s3">(</span><span class="s1">block</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s0">#header</span>
+    <span class="s1">out</span><span class="s3">(</span><span class="s5">&quot; &quot;</span><span class="s4">*</span><span class="s7">10</span><span class="s3">)</span>
+    <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">16</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s5">&quot;.%X &quot; </span><span class="s4">% </span><span class="s1">i</span><span class="s3">)</span>
+    <span class="s1">out</span><span class="s3">(</span><span class="s5">'\n'</span><span class="s3">)</span>
+    <span class="s0">#body</span>
+    <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s1">block</span><span class="s4">*</span><span class="s7">16</span><span class="s3">, </span><span class="s1">block</span><span class="s4">*</span><span class="s7">16</span><span class="s4">+</span><span class="s7">16</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">hexi </span><span class="s4">= </span><span class="s5">&quot;%X&quot; </span><span class="s4">% </span><span class="s1">i</span>
+        <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">hexi</span><span class="s3">)</span><span class="s4">&gt;</span><span class="s7">3</span><span class="s4">:</span>
+            <span class="s1">hexi </span><span class="s4">= </span><span class="s5">&quot;%07X&quot; </span><span class="s4">% </span><span class="s1">i</span>
+            <span class="s1">hexi </span><span class="s4">= </span><span class="s1">hexi</span><span class="s6">[</span><span class="s4">:</span><span class="s7">4</span><span class="s6">]</span><span class="s4">+</span><span class="s5">&quot; &quot;</span><span class="s4">+</span><span class="s1">hexi</span><span class="s6">[</span><span class="s7">4</span><span class="s4">:</span><span class="s6">]</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">hexi </span><span class="s4">= </span><span class="s5">&quot;     %03X&quot; </span><span class="s4">% </span><span class="s1">i</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s1">LTR</span><span class="s4">+</span><span class="s1">hexi</span><span class="s4">+</span><span class="s5">&quot;. &quot;</span><span class="s3">)</span>
+        <span class="s2">for </span><span class="s1">j </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">16</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">c </span><span class="s4">= </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">i</span><span class="s4">*</span><span class="s7">16</span><span class="s4">+</span><span class="s1">j</span><span class="s3">)</span>
+            <span class="s2">if </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">category</span><span class="s3">(</span><span class="s1">c</span><span class="s3">) </span><span class="s4">== </span><span class="s5">'Cc'</span><span class="s4">:</span>
+                <span class="s1">c_out </span><span class="s4">= </span><span class="s5">' '</span>
+            <span class="s2">else</span><span class="s4">:</span>
+                <span class="s1">c_out </span><span class="s4">= </span><span class="s1">c</span>
+            <span class="s2">if </span><span class="s1">unicodedata</span><span class="s3">.</span><span class="s1">combining</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span><span class="s4">:</span>
+                <span class="s1">c_out </span><span class="s4">= </span><span class="s5">&quot; &quot;</span><span class="s4">+</span><span class="s1">c</span>
+            <span class="s0"># fallback for python without east_asian_width (probably unnecessary, since this script does not work with &lt;2.6 anyway)</span>
+            <span class="s1">fullwidth </span><span class="s4">= </span><span class="s1">get_east_asian_width</span><span class="s3">(</span><span class="s1">c</span><span class="s3">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">] </span><span class="s2">in </span><span class="s5">'FW'</span>
+            <span class="s2">if not </span><span class="s1">fullwidth</span><span class="s4">:</span>
+                <span class="s1">c_out </span><span class="s4">= </span><span class="s5">' '</span><span class="s4">+</span><span class="s1">c_out</span>
+            <span class="s1">out</span><span class="s3">(</span><span class="s1">c_out</span><span class="s3">)</span>
+            <span class="s1">out</span><span class="s3">(</span><span class="s5">' '</span><span class="s3">)</span>
+        <span class="s1">out</span><span class="s3">(</span><span class="s5">'\n'</span><span class="s3">)</span>
+    <span class="s1">out</span><span class="s3">(</span><span class="s5">'\n'</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">print_blocks</span><span class="s3">(</span><span class="s1">blocks</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">for </span><span class="s1">block </span><span class="s2">in </span><span class="s1">blocks</span><span class="s4">:</span>
+        <span class="s1">print_block</span><span class="s3">(</span><span class="s1">block</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">is_range</span><span class="s3">(</span><span class="s1">s</span><span class="s3">, </span><span class="s1">typ</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s1">sp </span><span class="s4">= </span><span class="s1">s</span><span class="s3">.</span><span class="s1">split</span><span class="s3">(</span><span class="s5">'..'</span><span class="s3">)</span>
+    <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">sp</span><span class="s3">)</span><span class="s4">!=</span><span class="s7">2</span><span class="s4">:</span>
+        <span class="s2">return False</span>
+    <span class="s2">if not </span><span class="s1">sp</span><span class="s6">[</span><span class="s7">1</span><span class="s6">]</span><span class="s4">:</span>
+        <span class="s1">sp</span><span class="s6">[</span><span class="s7">1</span><span class="s6">] </span><span class="s4">= </span><span class="s1">sp</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span>
+    <span class="s2">elif not </span><span class="s1">sp</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s4">:</span>
+        <span class="s1">sp</span><span class="s6">[</span><span class="s7">0</span><span class="s6">] </span><span class="s4">= </span><span class="s1">sp</span><span class="s6">[</span><span class="s7">1</span><span class="s6">]</span>
+    <span class="s2">if not </span><span class="s1">sp</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s4">:</span>
+        <span class="s2">return False</span>
+    <span class="s1">low </span><span class="s4">= </span><span class="s1">list</span><span class="s3">(</span><span class="s1">process</span><span class="s3">(</span><span class="s6">[</span><span class="s1">sp</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]]</span><span class="s3">, </span><span class="s1">typ</span><span class="s3">)) </span><span class="s0"># intentionally no fromcp here, ranges are only of unicode characters</span>
+    <span class="s1">high </span><span class="s4">= </span><span class="s1">list</span><span class="s3">(</span><span class="s1">process</span><span class="s3">(</span><span class="s6">[</span><span class="s1">sp</span><span class="s6">[</span><span class="s7">1</span><span class="s6">]]</span><span class="s3">, </span><span class="s1">typ</span><span class="s3">))</span>
+    <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">low</span><span class="s3">)</span><span class="s4">!=</span><span class="s7">1 </span><span class="s2">or </span><span class="s1">len</span><span class="s3">(</span><span class="s1">high</span><span class="s3">)</span><span class="s4">!=</span><span class="s7">1</span><span class="s4">:</span>
+        <span class="s2">return False</span>
+    <span class="s1">low </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">low</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s3">)</span>
+    <span class="s1">high </span><span class="s4">= </span><span class="s1">ord</span><span class="s3">(</span><span class="s1">high</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s3">)</span>
+    <span class="s1">low </span><span class="s4">= </span><span class="s1">low </span><span class="s4">// </span><span class="s7">256</span>
+    <span class="s1">high </span><span class="s4">= </span><span class="s1">high </span><span class="s4">// </span><span class="s7">256 </span><span class="s4">+ </span><span class="s7">1</span>
+    <span class="s2">return </span><span class="s1">range</span><span class="s3">(</span><span class="s1">low</span><span class="s3">, </span><span class="s1">high</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">unescape</span><span class="s3">(</span><span class="s1">s</span><span class="s3">)</span><span class="s4">:</span>
+    <span class="s2">return </span><span class="s1">s</span><span class="s3">.</span><span class="s1">replace</span><span class="s3">(</span><span class="s5">r'\n'</span><span class="s3">, </span><span class="s5">'\n'</span><span class="s3">)</span>
+
+<span class="s1">ascii_cc_names </span><span class="s4">= </span><span class="s3">(</span><span class="s5">'NUL'</span><span class="s3">, </span><span class="s5">'SOH'</span><span class="s3">, </span><span class="s5">'STX'</span><span class="s3">, </span><span class="s5">'ETX'</span><span class="s3">, </span><span class="s5">'EOT'</span><span class="s3">, </span><span class="s5">'ENQ'</span><span class="s3">, </span><span class="s5">'ACK'</span><span class="s3">, </span><span class="s5">'BEL'</span><span class="s3">, </span><span class="s5">'BS'</span><span class="s3">, </span><span class="s5">'HT'</span><span class="s3">, </span><span class="s5">'LF'</span><span class="s3">, </span><span class="s5">'VT'</span><span class="s3">, </span><span class="s5">'FF'</span><span class="s3">, </span><span class="s5">'CR'</span><span class="s3">, </span><span class="s5">'SO'</span><span class="s3">, </span><span class="s5">'SI'</span><span class="s3">, </span><span class="s5">'DLE'</span><span class="s3">, </span><span class="s5">'DC1'</span><span class="s3">, </span><span class="s5">'DC2'</span><span class="s3">, </span><span class="s5">'DC3'</span><span class="s3">, </span><span class="s5">'DC4'</span><span class="s3">, </span><span class="s5">'NAK'</span><span class="s3">, </span><span class="s5">'SYN'</span><span class="s3">, </span><span class="s5">'ETB'</span><span class="s3">, </span><span class="s5">'CAN'</span><span class="s3">, </span><span class="s5">'EM'</span><span class="s3">, </span><span class="s5">'SUB'</span><span class="s3">, </span><span class="s5">'ESC'</span><span class="s3">, </span><span class="s5">'FS'</span><span class="s3">, </span><span class="s5">'GS'</span><span class="s3">, </span><span class="s5">'RS'</span><span class="s3">, </span><span class="s5">'US'</span><span class="s3">)</span>
+
+<span class="s2">def </span><span class="s1">display_ascii_table</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s1">print</span><span class="s3">(</span><span class="s5">'Dec Hex    Dec Hex    Dec Hex  Dec Hex  Dec Hex  Dec Hex   Dec Hex   Dec Hex'</span><span class="s3">)</span>
+    <span class="s2">for </span><span class="s1">row </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">0</span><span class="s3">, </span><span class="s7">16</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s2">for </span><span class="s1">col </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">0</span><span class="s3">, </span><span class="s7">8</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">cp </span><span class="s4">= </span><span class="s7">16</span><span class="s4">*</span><span class="s1">col</span><span class="s4">+</span><span class="s1">row</span>
+            <span class="s1">ch </span><span class="s4">= </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">cp</span><span class="s3">) </span><span class="s2">if </span><span class="s7">32</span><span class="s4">&lt;=</span><span class="s1">cp </span><span class="s2">else </span><span class="s1">ascii_cc_names</span><span class="s6">[</span><span class="s1">cp</span><span class="s6">]</span>
+            <span class="s1">ch </span><span class="s4">= </span><span class="s5">'DEL' </span><span class="s2">if </span><span class="s1">cp</span><span class="s4">==</span><span class="s7">127 </span><span class="s2">else </span><span class="s1">ch</span>
+            <span class="s1">frm </span><span class="s4">= </span><span class="s5">'{:3d} {:02X} {:2s}'</span>
+            <span class="s2">if </span><span class="s1">cp </span><span class="s4">&lt; </span><span class="s7">32</span><span class="s4">:</span>
+                <span class="s1">frm </span><span class="s4">= </span><span class="s5">'{:3d} {:02X} {:4s}'</span>
+            <span class="s2">elif </span><span class="s1">cp </span><span class="s4">&gt;= </span><span class="s7">96</span><span class="s4">:</span>
+                <span class="s1">frm </span><span class="s4">= </span><span class="s5">'{:4d} {:02X} {:2s}'</span>
+            <span class="s1">cell </span><span class="s4">= </span><span class="s1">frm</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">cp</span><span class="s3">, </span><span class="s1">cp</span><span class="s3">, </span><span class="s1">ch</span><span class="s3">)</span>
+            <span class="s1">print</span><span class="s3">(</span><span class="s1">cell</span><span class="s3">, </span><span class="s1">end</span><span class="s4">=</span><span class="s5">''</span><span class="s3">)</span>
+        <span class="s1">print</span><span class="s3">()</span>
+
+<span class="s1">brexit_ascii_diffs </span><span class="s4">= </span><span class="s6">{</span>
+ <span class="s7">30</span><span class="s4">: </span><span class="s5">' '</span><span class="s3">,</span>
+ <span class="s7">31</span><span class="s4">: </span><span class="s5">' '</span><span class="s3">,</span>
+ <span class="s7">34</span><span class="s4">: </span><span class="s5">&quot;'&quot;</span><span class="s3">,</span>
+<span class="s7">123</span><span class="s4">: </span><span class="s5">'{}{'</span><span class="s3">,</span>
+<span class="s7">125</span><span class="s4">: </span><span class="s5">'}}'</span><span class="s3">,</span>
+<span class="s7">127</span><span class="s4">: </span><span class="s5">' '</span><span class="s3">,</span>
+<span class="s7">128</span><span class="s4">: </span><span class="s5">' '</span><span class="s3">,</span>
+<span class="s7">129</span><span class="s4">: </span><span class="s5">' '</span><span class="s3">,</span>
+        <span class="s6">}</span>
+
+<span class="s2">def </span><span class="s1">display_brexit_ascii_table</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s1">print</span><span class="s3">(</span><span class="s5">' + | 0    1    2    3    4    5    6    7    8    9'</span><span class="s3">)</span>
+    <span class="s1">print</span><span class="s3">(</span><span class="s5">'---+-----------------------------------------------'</span><span class="s3">)</span>
+    <span class="s2">for </span><span class="s1">row </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">30</span><span class="s3">, </span><span class="s7">130</span><span class="s3">, </span><span class="s7">10</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">print</span><span class="s3">(</span><span class="s5">'{:3d}'</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">row</span><span class="s3">), </span><span class="s1">end</span><span class="s4">=</span><span class="s5">'|'</span><span class="s3">)</span>
+        <span class="s2">for </span><span class="s1">col </span><span class="s2">in </span><span class="s1">range</span><span class="s3">(</span><span class="s7">0</span><span class="s3">, </span><span class="s7">10</span><span class="s3">)</span><span class="s4">:</span>
+            <span class="s1">cp </span><span class="s4">= </span><span class="s1">col</span><span class="s4">+</span><span class="s1">row</span>
+            <span class="s1">ch </span><span class="s4">= </span><span class="s1">brexit_ascii_diffs</span><span class="s3">.</span><span class="s1">get</span><span class="s3">(</span><span class="s1">cp</span><span class="s3">, </span><span class="s1">chr</span><span class="s3">(</span><span class="s1">cp</span><span class="s3">))</span>
+            <span class="s1">cell </span><span class="s4">= </span><span class="s5">' {:3s} '</span><span class="s3">.</span><span class="s1">format</span><span class="s3">(</span><span class="s1">ch</span><span class="s3">)</span>
+            <span class="s1">print</span><span class="s3">(</span><span class="s1">cell</span><span class="s3">, </span><span class="s1">end</span><span class="s4">=</span><span class="s5">''</span><span class="s3">)</span>
+        <span class="s1">print</span><span class="s3">()</span>
+
+
+
+<span class="s1">format_string_default </span><span class="s4">= </span><span class="s5">'''{yellow}{bold}U+{ordc:04X} {name}{default} 
+{green}UTF-8:{default} {utf8} {green}UTF-16BE:{default} {utf16be} {green}Decimal:{default} {decimal} {green}Octal:{default} {octal}{opt_additional} 
+{pchar}{opt_flipcase}{opt_uppercase}{opt_lowercase} 
+{green}Category:{default} {category} ({category_desc}); {green}{opt_eaw}{default}{eaw_desc} 
+{green}{opt_unicode_block}{default}{opt_unicode_block_desc}{green}{opt_numeric}{default}{numeric_desc}{green}{opt_digit}{default}{digit_desc}{green}{opt_bidi}{default}{bidi}{bidi_desc} 
+{mirrored_desc}{green}{opt_combining}{default}{combining_desc}{green}{opt_decomp}{default}{decomp_desc} 
+'''</span>
+
+<span class="s2">def </span><span class="s1">main</span><span class="s3">()</span><span class="s4">:</span>
+    <span class="s1">parser </span><span class="s4">= </span><span class="s1">OptionParser</span><span class="s3">(</span><span class="s1">usage</span><span class="s4">=</span><span class="s5">&quot;usage: %prog [options] arg&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-x&quot;</span><span class="s3">, </span><span class="s5">&quot;--hexadecimal&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">const</span><span class="s4">=</span><span class="s5">'hexadecimal'</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;type&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Assume arg to be hexadecimal number&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-o&quot;</span><span class="s3">, </span><span class="s5">&quot;--octal&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">const</span><span class="s4">=</span><span class="s5">'octal'</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;type&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Assume arg to be octal number&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-b&quot;</span><span class="s3">, </span><span class="s5">&quot;--binary&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">const</span><span class="s4">=</span><span class="s5">'binary'</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;type&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Assume arg to be binary number&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-d&quot;</span><span class="s3">, </span><span class="s5">&quot;--decimal&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">const</span><span class="s4">=</span><span class="s5">'decimal'</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;type&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Assume arg to be decimal number&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-r&quot;</span><span class="s3">, </span><span class="s5">&quot;--regexp&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">const</span><span class="s4">=</span><span class="s5">'regexp'</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;type&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Assume arg to be regular expression&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-s&quot;</span><span class="s3">, </span><span class="s5">&quot;--string&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">const</span><span class="s4">=</span><span class="s5">'string'</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;type&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Assume arg to be a sequence of characters&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-a&quot;</span><span class="s3">, </span><span class="s5">&quot;--auto&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">const</span><span class="s4">=</span><span class="s2">None</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;type&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Try to guess arg type (default)&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-m&quot;</span><span class="s3">, </span><span class="s5">&quot;--max&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store&quot;</span><span class="s3">, </span><span class="s1">default</span><span class="s4">=</span><span class="s7">10</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;maxcount&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s4">=</span><span class="s5">&quot;int&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Maximal number of codepoints to display, default: 10; 0=unlimited&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-i&quot;</span><span class="s3">, </span><span class="s5">&quot;--io&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store&quot;</span><span class="s3">, </span><span class="s1">default</span><span class="s4">=</span><span class="s1">iocharsetguess</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;iocharset&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s4">=</span><span class="s5">&quot;string&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;I/O character set, I am guessing %s&quot; </span><span class="s4">% </span><span class="s1">iocharsetguess</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--fcp&quot;</span><span class="s3">, </span><span class="s5">&quot;--fromcp&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store&quot;</span><span class="s3">, </span><span class="s1">default</span><span class="s4">=</span><span class="s5">''</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;fromcp&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s4">=</span><span class="s5">&quot;string&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Convert numerical arguments from this encoding, default: no conversion&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-c&quot;</span><span class="s3">, </span><span class="s5">&quot;--charset-add&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;addcharset&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s4">=</span><span class="s5">&quot;string&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Show hexadecimal reprezentation in this additional charset&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-C&quot;</span><span class="s3">, </span><span class="s5">&quot;--colour&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;use_colour&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s4">=</span><span class="s5">&quot;string&quot;</span><span class="s3">,</span>
+          <span class="s1">default</span><span class="s4">=</span><span class="s5">&quot;auto&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Use colours, on, off or auto&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">''</span><span class="s3">, </span><span class="s5">&quot;--color&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;use_colour&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s4">=</span><span class="s5">&quot;string&quot;</span><span class="s3">,</span>
+          <span class="s1">default</span><span class="s4">=</span><span class="s5">&quot;auto&quot;</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;synonym for --colour&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-v&quot;</span><span class="s3">, </span><span class="s5">&quot;--verbose&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;count&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;verbosity&quot;</span><span class="s3">,</span>
+          <span class="s1">default</span><span class="s4">=</span><span class="s7">0</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Increase verbosity (reads Unihan properties - slow!)&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;-w&quot;</span><span class="s3">, </span><span class="s5">&quot;--wikipedia&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;count&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;query_wikipedia&quot;</span><span class="s3">,</span>
+          <span class="s1">default</span><span class="s4">=</span><span class="s7">0</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Query wikipedia for the character&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--wt&quot;</span><span class="s3">, </span><span class="s5">&quot;--wiktionary&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;count&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;query_wiktionary&quot;</span><span class="s3">,</span>
+          <span class="s1">default</span><span class="s4">=</span><span class="s7">0</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Query wiktionary for the character&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--list&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;list_all_encodings&quot;</span><span class="s3">,</span>
+          <span class="s1">const</span><span class="s4">=</span><span class="s2">True</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;List (approximately) all known encodings&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--format&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;format_string&quot;</span><span class="s3">, </span><span class="s1">type</span><span class="s4">=</span><span class="s5">&quot;string&quot;</span><span class="s3">,</span>
+          <span class="s1">default</span><span class="s4">=</span><span class="s1">format_string_default</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;formatting string&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--brief&quot;</span><span class="s3">, </span><span class="s5">&quot;--terse&quot;</span><span class="s3">, </span><span class="s5">&quot;--br&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;format_string&quot;</span><span class="s3">,</span>
+          <span class="s1">const</span><span class="s4">=</span><span class="s5">'{pchar} U+{ordc:04X} {name}\n'</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Brief format&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--download&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;download_unicodedata&quot;</span><span class="s3">,</span>
+          <span class="s1">const</span><span class="s4">=</span><span class="s2">True</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Try to dowload UnicodeData.txt&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--ascii&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;ascii_table&quot;</span><span class="s3">,</span>
+          <span class="s1">const</span><span class="s4">=</span><span class="s2">True</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Display ASCII table&quot;</span><span class="s3">)</span>
+    <span class="s1">parser</span><span class="s3">.</span><span class="s1">add_option</span><span class="s3">(</span><span class="s5">&quot;--brexit-ascii&quot;</span><span class="s3">, </span><span class="s5">&quot;--brexit&quot;</span><span class="s3">,</span>
+          <span class="s1">action</span><span class="s4">=</span><span class="s5">&quot;store_const&quot;</span><span class="s3">, </span><span class="s1">dest</span><span class="s4">=</span><span class="s5">&quot;brexit_ascii_table&quot;</span><span class="s3">,</span>
+          <span class="s1">const</span><span class="s4">=</span><span class="s2">True</span><span class="s3">,</span>
+          <span class="s1">help</span><span class="s4">=</span><span class="s5">&quot;Display ASCII table (EU-UK Trade and Cooperation Agreement version)&quot;</span><span class="s3">)</span>
+
+    <span class="s2">global </span><span class="s1">options</span>
+    <span class="s3">(</span><span class="s1">options</span><span class="s3">, </span><span class="s1">arguments</span><span class="s3">) </span><span class="s4">= </span><span class="s1">parser</span><span class="s3">.</span><span class="s1">parse_args</span><span class="s3">()</span>
+    <span class="s1">format_string </span><span class="s4">= </span><span class="s1">unescape</span><span class="s3">(</span><span class="s1">options</span><span class="s3">.</span><span class="s1">format_string</span><span class="s3">)</span>
+
+    <span class="s1">do_init</span><span class="s3">()</span>
+
+    <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">list_all_encodings</span><span class="s4">:</span>
+        <span class="s1">all_encodings </span><span class="s4">= </span><span class="s1">os</span><span class="s3">.</span><span class="s1">listdir</span><span class="s3">(</span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">dirname</span><span class="s3">(</span><span class="s1">encodings</span><span class="s3">.</span><span class="s1">__file__</span><span class="s3">))</span>
+        <span class="s1">all_encodings </span><span class="s4">= </span><span class="s1">set</span><span class="s3">(</span><span class="s6">[</span><span class="s1">os</span><span class="s3">.</span><span class="s1">path</span><span class="s3">.</span><span class="s1">splitext</span><span class="s3">(</span><span class="s1">x</span><span class="s3">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">] </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">all_encodings</span><span class="s6">]</span><span class="s3">)</span>
+        <span class="s1">all_encodings </span><span class="s4">= </span><span class="s1">list</span><span class="s3">(</span><span class="s1">all_encodings</span><span class="s3">)</span>
+        <span class="s1">all_encodings</span><span class="s3">.</span><span class="s1">sort</span><span class="s3">()</span>
+        <span class="s1">print </span><span class="s3">(</span><span class="s1">textwrap</span><span class="s3">.</span><span class="s1">fill</span><span class="s3">(</span><span class="s5">' '</span><span class="s3">.</span><span class="s1">join</span><span class="s3">(</span><span class="s1">all_encodings</span><span class="s3">)))</span>
+        <span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">()</span>
+
+    <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">ascii_table</span><span class="s4">:</span>
+        <span class="s1">display_ascii_table</span><span class="s3">()</span>
+        <span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">()</span>
+
+    <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">brexit_ascii_table</span><span class="s4">:</span>
+        <span class="s1">display_brexit_ascii_table</span><span class="s3">()</span>
+        <span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">()</span>
+
+    <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">download_unicodedata</span><span class="s4">:</span>
+        <span class="s1">download_unicodedata</span><span class="s3">()</span>
+        <span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">()</span>
+
+    <span class="s2">if </span><span class="s1">len</span><span class="s3">(</span><span class="s1">arguments</span><span class="s3">)</span><span class="s4">==</span><span class="s7">0</span><span class="s4">:</span>
+        <span class="s1">parser</span><span class="s3">.</span><span class="s1">print_help</span><span class="s3">()</span>
+        <span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">()</span>
+
+
+    <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">use_colour</span><span class="s3">.</span><span class="s1">lower</span><span class="s3">() </span><span class="s2">in </span><span class="s3">(</span><span class="s5">&quot;on&quot;</span><span class="s3">, </span><span class="s5">&quot;1&quot;</span><span class="s3">, </span><span class="s5">&quot;true&quot;</span><span class="s3">, </span><span class="s5">&quot;yes&quot;</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s0"># we reuse the options.use_colour, so that we do not need to use another global</span>
+        <span class="s1">options</span><span class="s3">.</span><span class="s1">use_colour </span><span class="s4">= </span><span class="s2">True</span>
+    <span class="s2">elif </span><span class="s1">options</span><span class="s3">.</span><span class="s1">use_colour</span><span class="s3">.</span><span class="s1">lower</span><span class="s3">() </span><span class="s2">in </span><span class="s3">(</span><span class="s5">&quot;off&quot;</span><span class="s3">, </span><span class="s5">&quot;0&quot;</span><span class="s3">, </span><span class="s5">&quot;false&quot;</span><span class="s3">, </span><span class="s5">&quot;no&quot;</span><span class="s3">)</span><span class="s4">:</span>
+        <span class="s1">options</span><span class="s3">.</span><span class="s1">use_colour </span><span class="s4">= </span><span class="s2">False</span>
+    <span class="s2">else</span><span class="s4">:</span>
+        <span class="s1">options</span><span class="s3">.</span><span class="s1">use_colour </span><span class="s4">= </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">stdout</span><span class="s3">.</span><span class="s1">isatty</span><span class="s3">()</span>
+        <span class="s2">if </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">platform </span><span class="s4">== </span><span class="s5">'win32'</span><span class="s4">:</span>
+            <span class="s1">options</span><span class="s3">.</span><span class="s1">use_colour </span><span class="s4">= </span><span class="s2">False</span>
+
+    <span class="s1">l_args </span><span class="s4">= </span><span class="s6">[] </span><span class="s0"># list of non range arguments to process</span>
+    <span class="s2">for </span><span class="s1">argum </span><span class="s2">in </span><span class="s1">arguments</span><span class="s4">:</span>
+        <span class="s2">if </span><span class="s1">PY3</span><span class="s4">:</span>
+            <span class="s0"># in python3, argv is automatically decoded into unicode</span>
+            <span class="s0"># but we have to check for surrogates</span>
+            <span class="s1">argum </span><span class="s4">= </span><span class="s1">argum</span><span class="s3">.</span><span class="s1">encode</span><span class="s3">(</span><span class="s1">options</span><span class="s3">.</span><span class="s1">iocharset</span><span class="s3">, </span><span class="s5">'surrogateescape'</span><span class="s3">)</span>
+        <span class="s2">try</span><span class="s4">:</span>
+            <span class="s1">argum </span><span class="s4">= </span><span class="s1">argum</span><span class="s3">.</span><span class="s1">decode</span><span class="s3">(</span><span class="s1">options</span><span class="s3">.</span><span class="s1">iocharset</span><span class="s3">)</span>
+        <span class="s2">except </span><span class="s1">UnicodeDecodeError</span><span class="s4">:</span>
+            <span class="s1">error </span><span class="s3">(</span><span class="s5">&quot;Sequence %s is not valid in charset '%s'.&quot; </span><span class="s4">% </span><span class="s3">(</span><span class="s1">repr</span><span class="s3">(</span><span class="s1">argum</span><span class="s3">),  </span><span class="s1">options</span><span class="s3">.</span><span class="s1">iocharset</span><span class="s3">))</span>
+        <span class="s1">is_r </span><span class="s4">= </span><span class="s1">is_range</span><span class="s3">(</span><span class="s1">argum</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">type</span><span class="s3">)</span>
+        <span class="s2">if </span><span class="s1">is_r</span><span class="s4">:</span>
+            <span class="s1">print_blocks</span><span class="s3">(</span><span class="s1">is_r</span><span class="s3">)</span>
+        <span class="s2">else</span><span class="s4">:</span>
+            <span class="s1">l_args</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">argum</span><span class="s3">)</span>
+
+    <span class="s2">if </span><span class="s1">l_args</span><span class="s4">:</span>
+        <span class="s2">global </span><span class="s1">unihan_fs</span>
+        <span class="s1">unihan_fs </span><span class="s4">= </span><span class="s6">[]</span>
+        <span class="s2">if </span><span class="s1">options</span><span class="s3">.</span><span class="s1">verbosity</span><span class="s4">&gt;</span><span class="s7">0</span><span class="s4">:</span>
+            <span class="s1">unihan_fs </span><span class="s4">= </span><span class="s1">get_unihan_files</span><span class="s3">() </span><span class="s0"># list of file names for Unihan data file(s), empty if not available</span>
+            <span class="s2">if not </span><span class="s1">unihan_fs</span><span class="s4">:</span>
+                <span class="s1">out</span><span class="s3">( </span><span class="s5">&quot;&quot;&quot; 
+Unihan_*.txt files not found. In order to view Unihan properties, 
+please place the files into /usr/share/unidata/, 
+/usr/share/unicode/, ~/.unicode/ 
+or current working directory (optionally you can gzip or bzip2 them). 
+You can get the files by unpacking ftp://ftp.unicode.org/Public/UNIDATA/Unihan.zip 
+Warning, listing UniHan Properties is rather slow. 
+ 
+&quot;&quot;&quot;</span><span class="s3">)</span>
+                <span class="s1">options</span><span class="s3">.</span><span class="s1">verbosity </span><span class="s4">= </span><span class="s7">0</span>
+        <span class="s1">processed_args </span><span class="s4">= </span><span class="s1">process</span><span class="s3">(</span><span class="s1">l_args</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">type</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">fromcp</span><span class="s3">, </span><span class="s1">prefill_cache</span><span class="s4">=</span><span class="s2">True</span><span class="s3">)</span>
+        <span class="s1">print_characters</span><span class="s3">(</span><span class="s1">processed_args</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">maxcount</span><span class="s3">, </span><span class="s1">format_string</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">query_wikipedia</span><span class="s3">, </span><span class="s1">options</span><span class="s3">.</span><span class="s1">query_wiktionary</span><span class="s3">)</span>
+
+<span class="s2">if </span><span class="s1">__name__ </span><span class="s4">== </span><span class="s5">'__main__'</span><span class="s4">:</span>
+    <span class="s1">main</span><span class="s3">()</span>
+</pre>
+</body>
+</html>

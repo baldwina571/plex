@@ -1,0 +1,32 @@
+<html>
+<head>
+<title>normalizer</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #475f76;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b877db; font-style: italic;}
+.s3 { color: #b4c2f0;}
+.s4 { color: #baacff;}
+.s5 { color: #64d1a9;}
+.s6 { color: #7fdaff;}
+.s7 { color: #ff9668;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+normalizer</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/Users/aaronbaldwin/Desktop/My_scripts/sonarr/venv/bin/python</span>
+<span class="s0"># -*- coding: utf-8 -*-</span>
+<span class="s2">import </span><span class="s1">re</span>
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">from </span><span class="s1">charset_normalizer</span><span class="s3">.</span><span class="s1">cli</span><span class="s3">.</span><span class="s1">normalizer </span><span class="s2">import </span><span class="s1">cli_detect</span>
+<span class="s2">if </span><span class="s1">__name__ </span><span class="s4">== </span><span class="s5">'__main__'</span><span class="s4">:</span>
+    <span class="s1">sys</span><span class="s3">.</span><span class="s1">argv</span><span class="s6">[</span><span class="s7">0</span><span class="s6">] </span><span class="s4">= </span><span class="s1">re</span><span class="s3">.</span><span class="s1">sub</span><span class="s3">(</span><span class="s5">r'(-script\.pyw|\.exe)?$'</span><span class="s3">, </span><span class="s5">''</span><span class="s3">, </span><span class="s1">sys</span><span class="s3">.</span><span class="s1">argv</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s3">)</span>
+    <span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">(</span><span class="s1">cli_detect</span><span class="s3">())</span>
+</pre>
+</body>
+</html>

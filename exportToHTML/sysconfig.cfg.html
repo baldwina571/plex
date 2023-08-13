@@ -1,0 +1,105 @@
+<html>
+<head>
+<title>sysconfig.cfg</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b4c2f0;}
+.s1 { color: #dbbe7f;}
+.s2 { color: #b6c4f2;}
+.s3 { color: #475f76;}
+.s4 { color: #b877db; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+sysconfig.cfg</font>
+</center></td></tr></table>
+<pre><span class="s0">[</span><span class="s1">posix_prefix</span><span class="s0">]</span>
+<span class="s0"># </span><span class="s3">Configuration directories.  Some of these come straight out of the</span>
+<span class="s0"># </span><span class="s3">configure script.  They are for implementing the other variables, not to</span>
+<span class="s0"># </span><span class="s3">be used directly in [resource_locations].</span>
+<span class="s4">confdir </span><span class="s0">= </span><span class="s2">/etc 
+</span><span class="s4">datadir </span><span class="s0">= </span><span class="s2">/usr/share 
+</span><span class="s4">libdir </span><span class="s0">= </span><span class="s2">/usr/lib 
+</span><span class="s4">statedir </span><span class="s0">= </span><span class="s2">/var 
+</span><span class="s0"># </span><span class="s3">User resource directory</span>
+<span class="s4">local </span><span class="s0">= </span><span class="s2">~/.local/{distribution.name} 
+</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{base}/lib/python{py_version_short} 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{platbase}/lib/python{py_version_short} 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{base}/lib/python{py_version_short}/site-packages 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{platbase}/lib/python{py_version_short}/site-packages 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{base}/include/python{py_version_short}{abiflags} 
+</span><span class="s4">platinclude </span><span class="s0">= </span><span class="s2">{platbase}/include/python{py_version_short}{abiflags} 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{base} 
+</span>
+<span class="s0">[</span><span class="s1">posix_home</span><span class="s0">]</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{base}/lib/python 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{base}/lib/python 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{base}/lib/python 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{base}/lib/python 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{base}/include/python 
+</span><span class="s4">platinclude </span><span class="s0">= </span><span class="s2">{base}/include/python 
+</span><span class="s4">scripts </span><span class="s0">= </span><span class="s2">{base}/bin 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{base} 
+</span>
+<span class="s0">[</span><span class="s1">nt</span><span class="s0">]</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{base}/Lib 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{base}/Lib 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{base}/Lib/site-packages 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{base}/Lib/site-packages 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{base}/Include 
+</span><span class="s4">platinclude </span><span class="s0">= </span><span class="s2">{base}/Include 
+</span><span class="s4">scripts </span><span class="s0">= </span><span class="s2">{base}/Scripts 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{base} 
+</span>
+<span class="s0">[</span><span class="s1">os2</span><span class="s0">]</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{base}/Lib 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{base}/Lib 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{base}/Lib/site-packages 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{base}/Lib/site-packages 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{base}/Include 
+</span><span class="s4">platinclude </span><span class="s0">= </span><span class="s2">{base}/Include 
+</span><span class="s4">scripts </span><span class="s0">= </span><span class="s2">{base}/Scripts 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{base} 
+</span>
+<span class="s0">[</span><span class="s1">os2_home</span><span class="s0">]</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short} 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short} 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short}/site-packages 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short}/site-packages 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{userbase}/include/python{py_version_short} 
+</span><span class="s4">scripts </span><span class="s0">= </span><span class="s2">{userbase}/bin 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{userbase} 
+</span>
+<span class="s0">[</span><span class="s1">nt_user</span><span class="s0">]</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{userbase}/Python{py_version_nodot} 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{userbase}/Python{py_version_nodot} 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{userbase}/Python{py_version_nodot}/site-packages 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{userbase}/Python{py_version_nodot}/site-packages 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{userbase}/Python{py_version_nodot}/Include 
+</span><span class="s4">scripts </span><span class="s0">= </span><span class="s2">{userbase}/Scripts 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{userbase} 
+</span>
+<span class="s0">[</span><span class="s1">posix_user</span><span class="s0">]</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short} 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short} 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short}/site-packages 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python{py_version_short}/site-packages 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{userbase}/include/python{py_version_short} 
+</span><span class="s4">scripts </span><span class="s0">= </span><span class="s2">{userbase}/bin 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{userbase} 
+</span>
+<span class="s0">[</span><span class="s1">osx_framework_user</span><span class="s0">]</span>
+<span class="s4">stdlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python 
+</span><span class="s4">platstdlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python 
+</span><span class="s4">purelib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python/site-packages 
+</span><span class="s4">platlib </span><span class="s0">= </span><span class="s2">{userbase}/lib/python/site-packages 
+</span><span class="s4">include </span><span class="s0">= </span><span class="s2">{userbase}/include 
+</span><span class="s4">scripts </span><span class="s0">= </span><span class="s2">{userbase}/bin 
+</span><span class="s4">data </span><span class="s0">= </span><span class="s2">{userbase} 
+</span></pre>
+</body>
+</html>

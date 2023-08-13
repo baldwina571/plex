@@ -1,0 +1,63 @@
+<html>
+<head>
+<title>_base.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b877db; font-style: italic;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b4c2f0;}
+.s3 { color: #baacff;}
+.s4 { color: #475f76;}
+.s5 { color: #7fdaff;}
+.s6 { color: #ff9668;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_base.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span><span class="s2">, </span><span class="s1">division</span><span class="s2">, </span><span class="s1">unicode_literals</span>
+
+<span class="s0">try</span><span class="s3">:</span>
+    <span class="s0">from </span><span class="s1">collections</span><span class="s2">.</span><span class="s1">abc </span><span class="s0">import </span><span class="s1">Mapping</span>
+<span class="s0">except </span><span class="s1">ImportError</span><span class="s3">:  </span><span class="s4"># Python 2.7</span>
+    <span class="s0">from </span><span class="s1">collections </span><span class="s0">import </span><span class="s1">Mapping</span>
+
+
+<span class="s0">class </span><span class="s1">Trie</span><span class="s2">(</span><span class="s1">Mapping</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s4">&quot;&quot;&quot;Abstract base class for tries&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">keys</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">prefix</span><span class="s3">=</span><span class="s0">None</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s4"># pylint:disable=arguments-differ</span>
+        <span class="s1">keys </span><span class="s3">= </span><span class="s1">super</span><span class="s2">(</span><span class="s1">Trie</span><span class="s2">, </span><span class="s1">self</span><span class="s2">).</span><span class="s1">keys</span><span class="s2">()</span>
+
+        <span class="s0">if </span><span class="s1">prefix </span><span class="s0">is None</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">set</span><span class="s2">(</span><span class="s1">keys</span><span class="s2">)</span>
+
+        <span class="s0">return </span><span class="s5">{</span><span class="s1">x </span><span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">keys </span><span class="s0">if </span><span class="s1">x</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">)</span><span class="s5">}</span>
+
+    <span class="s0">def </span><span class="s1">has_keys_with_prefix</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">for </span><span class="s1">key </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">keys</span><span class="s2">()</span><span class="s3">:</span>
+            <span class="s0">if </span><span class="s1">key</span><span class="s2">.</span><span class="s1">startswith</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">)</span><span class="s3">:</span>
+                <span class="s0">return True</span>
+
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">longest_prefix</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">prefix </span><span class="s0">in </span><span class="s1">self</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">prefix</span>
+
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range</span><span class="s2">(</span><span class="s6">1</span><span class="s2">, </span><span class="s1">len</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">) </span><span class="s3">+ </span><span class="s6">1</span><span class="s2">)</span><span class="s3">:</span>
+            <span class="s0">if </span><span class="s1">prefix</span><span class="s5">[</span><span class="s3">:-</span><span class="s1">i</span><span class="s5">] </span><span class="s0">in </span><span class="s1">self</span><span class="s3">:</span>
+                <span class="s0">return </span><span class="s1">prefix</span><span class="s5">[</span><span class="s3">:-</span><span class="s1">i</span><span class="s5">]</span>
+
+        <span class="s0">raise </span><span class="s1">KeyError</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">longest_prefix_item</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">prefix</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s1">lprefix </span><span class="s3">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">longest_prefix</span><span class="s2">(</span><span class="s1">prefix</span><span class="s2">)</span>
+        <span class="s0">return </span><span class="s2">(</span><span class="s1">lprefix</span><span class="s2">, </span><span class="s1">self</span><span class="s5">[</span><span class="s1">lprefix</span><span class="s5">]</span><span class="s2">)</span>
+</pre>
+</body>
+</html>

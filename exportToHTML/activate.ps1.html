@@ -1,0 +1,85 @@
+<html>
+<head>
+<title>activate.ps1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b4c2f0;}
+.s1 { color: #b877db; font-style: italic;}
+.s2 { color: #d5d8da;}
+.s3 { color: #b6c4f2;}
+.s4 { color: #baacff; font-style: italic;}
+.s5 { color: #fab795;}
+.s6 { color: #64d1a9;}
+.s7 { color: #475f76;}
+.s8 { color: #b4c2f0; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+activate.ps1</font>
+</center></td></tr></table>
+<pre><span class="s0">$</span><span class="s1">script</span><span class="s2">:THIS_PATH </span><span class="s4">= </span><span class="s0">$</span><span class="s3">myinvocation</span><span class="s2">.mycommand.path</span>
+<span class="s0">$</span><span class="s1">script</span><span class="s2">:BASE_DIR </span><span class="s4">= </span><span class="s5">Split-Path </span><span class="s0">(</span><span class="s5">Resolve-Path </span><span class="s0">&quot;$</span><span class="s2">THIS_PATH</span><span class="s6">/..</span><span class="s0">&quot;) </span><span class="s4">-</span><span class="s3">Parent 
+</span>
+<span class="s1">function global</span><span class="s3">:</span><span class="s5">deactivate</span><span class="s0">([</span><span class="s1">switch</span><span class="s0">] $</span><span class="s2">NonDestructive</span><span class="s0">) {</span>
+    <span class="s1">if </span><span class="s0">(</span><span class="s5">Test-Path </span><span class="s3">variable:_OLD_VIRTUAL_PATH</span><span class="s0">) {</span>
+        <span class="s0">$</span><span class="s2">env:PATH </span><span class="s4">= </span><span class="s0">$</span><span class="s2">variable:_OLD_VIRTUAL_PATH</span>
+        <span class="s5">Remove-Variable </span><span class="s0">&quot;</span><span class="s6">_OLD_VIRTUAL_PATH</span><span class="s0">&quot; </span><span class="s4">-</span><span class="s3">Scope global 
+    </span><span class="s0">}</span>
+
+    <span class="s1">if </span><span class="s0">(</span><span class="s5">Test-Path </span><span class="s3">function:_old_virtual_prompt</span><span class="s0">) {</span>
+        <span class="s0">$</span><span class="s2">function:prompt </span><span class="s4">= </span><span class="s0">$</span><span class="s2">function:_old_virtual_prompt</span>
+        <span class="s5">Remove-Item </span><span class="s3">function:\_old_virtual_prompt 
+    </span><span class="s0">}</span>
+
+    <span class="s1">if </span><span class="s0">($</span><span class="s2">env:VIRTUAL_ENV</span><span class="s0">) {</span>
+        <span class="s5">Remove-Item </span><span class="s3">env:VIRTUAL_ENV </span><span class="s4">-</span><span class="s3">ErrorAction SilentlyContinue 
+    </span><span class="s0">}</span>
+
+    <span class="s1">if </span><span class="s0">(</span><span class="s4">!</span><span class="s0">$</span><span class="s2">NonDestructive</span><span class="s0">) {</span>
+        <span class="s0"># </span><span class="s7">Self destruct! 
+        </span><span class="s5">Remove-Item </span><span class="s3">function:deactivate 
+        </span><span class="s5">Remove-Item </span><span class="s3">function:pydoc 
+    </span><span class="s0">}</span>
+<span class="s0">}</span>
+
+<span class="s1">function global</span><span class="s3">:</span><span class="s5">pydoc </span><span class="s0">{</span>
+    <span class="s3">python </span><span class="s4">-</span><span class="s3">m pydoc </span><span class="s0">$</span><span class="s3">args</span>
+<span class="s0">}</span>
+
+<span class="s0"># </span><span class="s7">unset irrelevant variables 
+</span><span class="s3">deactivate </span><span class="s4">-</span><span class="s3">nondestructive 
+</span>
+<span class="s0">$</span><span class="s2">VIRTUAL_ENV </span><span class="s4">= </span><span class="s0">$</span><span class="s2">BASE_DIR</span>
+<span class="s0">$</span><span class="s2">env:VIRTUAL_ENV </span><span class="s4">= </span><span class="s0">$</span><span class="s2">VIRTUAL_ENV</span>
+
+<span class="s5">New-Variable </span><span class="s4">-</span><span class="s3">Scope global </span><span class="s4">-</span><span class="s3">Name _OLD_VIRTUAL_PATH </span><span class="s4">-</span><span class="s3">Value </span><span class="s0">$</span><span class="s2">env:PATH</span>
+
+<span class="s0">$</span><span class="s2">env:PATH </span><span class="s4">= </span><span class="s0">&quot;$</span><span class="s2">env:VIRTUAL_ENV</span><span class="s6">/bin:</span><span class="s0">&quot; </span><span class="s4">+ </span><span class="s0">$</span><span class="s2">env:PATH</span>
+<span class="s1">if </span><span class="s0">(</span><span class="s4">!</span><span class="s0">$</span><span class="s2">env:VIRTUAL_ENV_DISABLE_PROMPT</span><span class="s0">) {</span>
+    <span class="s1">function global</span><span class="s3">:</span><span class="s5">_old_virtual_prompt </span><span class="s0">{</span>
+        <span class="s0">&quot;&quot;</span>
+    <span class="s0">}</span>
+    <span class="s0">$</span><span class="s2">function:_old_virtual_prompt </span><span class="s4">= </span><span class="s0">$</span><span class="s2">function:prompt</span>
+
+    <span class="s1">if </span><span class="s0">(&quot;&quot; </span><span class="s4">-ne </span><span class="s0">&quot;&quot;) {</span>
+        <span class="s1">function global</span><span class="s3">:</span><span class="s5">prompt </span><span class="s0">{</span>
+            <span class="s0"># </span><span class="s7">Add the custom prefix to the existing prompt 
+            </span><span class="s0">$</span><span class="s2">previous_prompt_value </span><span class="s4">= &amp; </span><span class="s0">$</span><span class="s2">function:_old_virtual_prompt</span>
+            <span class="s0">(&quot;&quot; </span><span class="s4">+ </span><span class="s0">$</span><span class="s2">previous_prompt_value</span><span class="s0">)</span>
+        <span class="s0">}</span>
+    <span class="s0">}</span>
+    <span class="s1">else </span><span class="s0">{</span>
+        <span class="s1">function global</span><span class="s3">:</span><span class="s5">prompt </span><span class="s0">{</span>
+            <span class="s0"># </span><span class="s7">Add a prefix to the current prompt, but don't discard it. 
+            </span><span class="s0">$</span><span class="s2">previous_prompt_value </span><span class="s4">= &amp; </span><span class="s0">$</span><span class="s2">function:_old_virtual_prompt</span>
+            <span class="s0">$</span><span class="s2">new_prompt_value </span><span class="s4">= </span><span class="s0">&quot;</span><span class="s6">(</span><span class="s8">$</span><span class="s0">( </span><span class="s5">Split-Path </span><span class="s0">$</span><span class="s2">env:VIRTUAL_ENV </span><span class="s4">-</span><span class="s6">Leaf </span><span class="s0">)</span><span class="s6">) </span><span class="s0">&quot;</span>
+            <span class="s0">($</span><span class="s2">new_prompt_value </span><span class="s4">+ </span><span class="s0">$</span><span class="s2">previous_prompt_value</span><span class="s0">)</span>
+        <span class="s0">}</span>
+    <span class="s0">}</span>
+<span class="s0">}</span>
+</pre>
+</body>
+</html>

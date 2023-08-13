@@ -1,0 +1,298 @@
+<html>
+<head>
+<title>plex.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b877db; font-style: italic;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b4c2f0;}
+.s3 { color: #baacff;}
+.s4 { color: #64d1a9;}
+.s5 { color: #475f76;}
+.s6 { color: #7fdaff;}
+.s7 { color: #ff9668;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+plex.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">requests</span>
+<span class="s0">import </span><span class="s1">json</span>
+<span class="s0">import </span><span class="s1">urllib</span><span class="s2">.</span><span class="s1">parse</span>
+<span class="s0">import </span><span class="s1">time</span>
+<span class="s0">import </span><span class="s1">datetime</span>
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">import </span><span class="s1">requests</span>
+<span class="s0">from </span><span class="s1">unidecode </span><span class="s0">import </span><span class="s1">unidecode</span>
+
+<span class="s1">server_ip </span><span class="s3">= </span><span class="s4">'192.168.1.155'</span>
+<span class="s1">sonarr_port </span><span class="s3">= </span><span class="s4">'9999'</span>
+<span class="s1">radarr_port </span><span class="s3">= </span><span class="s4">'8310'</span>
+<span class="s1">sonarr_endpoint </span><span class="s3">= </span><span class="s4">'/api/v3/series'</span>
+<span class="s1">sonarr_api_key </span><span class="s3">= </span><span class="s4">'49992782350e4674ab8178bb2043c53b'</span>
+<span class="s1">radarr_api_key </span><span class="s3">= </span><span class="s4">'486258e862f646438f6e58ce7a800e42'</span>
+<span class="s1">themoviedb_api_key_v3 </span><span class="s3">= </span><span class="s4">'05ebc0015f05f55dfc28572481f18e26'</span>
+<span class="s1">themoviedb_api_key_v4 </span><span class="s3">= </span><span class="s4">'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwNWViYzAwMTVmMDVmNTVkZmMyODU3MjQ4MWYxOGUyNiIsInN1YiI6IjYzZTE3N2M3MzY3OWExMDA3ZjhmYzAxYyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.7qDlIvbUbglJ5Xvwo0_rpKr5nGs-rXtOdZV54m7xyZg'</span>
+
+<span class="s5">#Identify show genres</span>
+<span class="s0">def </span><span class="s1">tv_genres</span><span class="s2">()</span><span class="s3">:</span>
+    <span class="s1">result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">f'https://api.themoviedb.org/3/genre/tv/list?api_key=05ebc0015f05f55dfc28572481f18e26'</span><span class="s2">).</span><span class="s1">text</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">result</span><span class="s2">)</span>
+
+<span class="s5">#Get the shows currently on Sonarr</span>
+<span class="s0">def </span><span class="s1">get_shows</span><span class="s2">()</span><span class="s3">:</span>
+    <span class="s1">shows_json </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">sonarr_port</span><span class="s4">}{</span><span class="s1">sonarr_endpoint</span><span class="s4">}'</span><span class="s2">, </span><span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">sonarr_api_key</span><span class="s6">}</span><span class="s2">).</span><span class="s1">text</span>
+    <span class="s1">shows </span><span class="s3">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">loads</span><span class="s2">(</span><span class="s1">shows_json</span><span class="s2">)</span>
+    <span class="s0">for </span><span class="s1">show </span><span class="s0">in </span><span class="s1">shows</span><span class="s3">:</span>
+        <span class="s0">try</span><span class="s3">:</span>
+            <span class="s0">try</span><span class="s3">:</span>
+                <span class="s1">year </span><span class="s3">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">findall</span><span class="s2">(</span><span class="s4">'[\d]{4}'</span><span class="s2">, </span><span class="s1">show</span><span class="s6">[</span><span class="s4">'firstAired'</span><span class="s6">]</span><span class="s2">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span>
+            <span class="s0">except</span><span class="s3">:</span>
+                <span class="s1">year </span><span class="s3">= </span><span class="s7">0</span>
+            <span class="s1">show_rating</span><span class="s2">(</span><span class="s1">re</span><span class="s2">.</span><span class="s1">sub</span><span class="s2">(</span><span class="s4">'\([\d\w]+\)$'</span><span class="s2">, </span><span class="s4">''</span><span class="s2">, </span><span class="s1">show</span><span class="s6">[</span><span class="s4">'title'</span><span class="s6">]</span><span class="s2">), </span><span class="s1">show</span><span class="s6">[</span><span class="s4">'id'</span><span class="s6">]</span><span class="s2">, </span><span class="s1">show</span><span class="s6">[</span><span class="s4">'monitored'</span><span class="s6">]</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span>
+            <span class="s5">#print(f&quot;{show['title']}, {show['monitored']}, {show['id']}&quot;)</span>
+            <span class="s1">time</span><span class="s2">.</span><span class="s1">sleep</span><span class="s2">(</span><span class="s7">0.15</span><span class="s2">)</span>
+        <span class="s0">except</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;title&quot;</span><span class="s6">]</span><span class="s4">} fucked up'</span><span class="s2">)</span>
+
+<span class="s0">def </span><span class="s1">delete_show</span><span class="s2">(</span><span class="s1">show_id</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s1">shows_json </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">sonarr_port</span><span class="s4">}{</span><span class="s1">sonarr_endpoint</span><span class="s4">}/{</span><span class="s1">show_id</span><span class="s4">}'</span><span class="s2">, </span><span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">sonarr_api_key</span><span class="s6">}</span><span class="s2">).</span><span class="s1">text</span>
+    <span class="s1">show </span><span class="s3">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">loads</span><span class="s2">(</span><span class="s1">shows_json</span><span class="s2">)</span>
+    <span class="s1">quality </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;qualityProfileId&quot;</span><span class="s6">]</span>
+    <span class="s1">seriesType </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;seriesType&quot;</span><span class="s6">]</span>
+    <span class="s1">seasonFolder </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;seasonFolder&quot;</span><span class="s6">]</span>
+    <span class="s1">rootFolderPath </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;rootFolderPath&quot;</span><span class="s6">]</span>
+    <span class="s1">tags </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;tags&quot;</span><span class="s6">]</span>
+    <span class="s1">load </span><span class="s3">= </span><span class="s4">f'&quot;seriesIds&quot;: [{</span><span class="s1">show_id</span><span class="s4">}], &quot;monitored&quot;: false, &quot;qualityProfileId&quot;: {</span><span class="s1">quality</span><span class="s4">}, &quot;seriesType&quot;: &quot;{</span><span class="s1">seriesType</span><span class="s4">}&quot;, &quot;seasonFolder&quot;: true, &quot;rootFolderPath&quot;: &quot;{</span><span class="s1">rootFolderPath</span><span class="s4">}&quot;, &quot;tags&quot;: {</span><span class="s1">tags</span><span class="s4">}, &quot;applyTags&quot;: &quot;add&quot;, &quot;moveFiles&quot;: true, &quot;deleteFiles&quot;: true, &quot;addImportListExclusion&quot;: true'</span>
+    <span class="s1">load </span><span class="s3">= </span><span class="s4">&quot;{&quot;</span><span class="s3">+</span><span class="s1">load</span><span class="s3">+</span><span class="s4">&quot;}&quot;</span>
+    <span class="s5">#print(load)</span>
+    <span class="s1">result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">delete</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">sonarr_port</span><span class="s4">}{</span><span class="s1">sonarr_endpoint</span><span class="s4">}/editor'</span><span class="s2">, </span><span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">sonarr_api_key</span><span class="s6">}</span><span class="s2">, </span><span class="s1">data</span><span class="s3">=</span><span class="s1">load</span><span class="s2">)</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">result</span><span class="s2">)</span>
+
+<span class="s0">def </span><span class="s1">show_exclusion</span><span class="s2">(</span><span class="s1">tvdbId</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">id</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s1">exclusion_endpoint </span><span class="s3">= </span><span class="s4">&quot;/api/v3/importlistexclusion&quot;</span>
+    <span class="s5">#title = urllib.parse.quote_plus(title)</span>
+    <span class="s1">load </span><span class="s3">= </span><span class="s4">f'&quot;id&quot;: 0, &quot;tvdbId&quot;: &quot;{</span><span class="s1">tvdbId</span><span class="s4">}&quot;, &quot;title&quot;: &quot;{</span><span class="s1">title</span><span class="s4">}&quot;'</span>
+    <span class="s1">load </span><span class="s3">= </span><span class="s4">&quot;{&quot; </span><span class="s3">+ </span><span class="s1">load </span><span class="s3">+ </span><span class="s4">&quot;}&quot;</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">load</span><span class="s2">)</span>
+    <span class="s1">get_result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">post</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">sonarr_port</span><span class="s4">}{</span><span class="s1">exclusion_endpoint</span><span class="s4">}'</span><span class="s2">, </span><span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">sonarr_api_key</span><span class="s2">, </span><span class="s4">&quot;Content-Type&quot;</span><span class="s3">: </span><span class="s4">&quot;application/json; Charset=UTF-8&quot;</span><span class="s6">}</span><span class="s2">, </span><span class="s1">data</span><span class="s3">=</span><span class="s1">load</span><span class="s2">)</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">get_result</span><span class="s2">.</span><span class="s1">status_code</span><span class="s2">)</span>
+    <span class="s5">#print(get_result.text)</span>
+    <span class="s1">time</span><span class="s2">.</span><span class="s1">sleep</span><span class="s2">(</span><span class="s7">0.2</span><span class="s2">)</span>
+
+<span class="s5">#Gets info about show from TMDB</span>
+<span class="s0">def </span><span class="s1">show_rating</span><span class="s2">(</span><span class="s1">show_name</span><span class="s2">, </span><span class="s1">show_id</span><span class="s2">, </span><span class="s1">monitored</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s1">encoded_show </span><span class="s3">= </span><span class="s1">urllib</span><span class="s2">.</span><span class="s1">parse</span><span class="s2">.</span><span class="s1">quote_plus</span><span class="s2">(</span><span class="s1">show_name</span><span class="s2">)</span>
+    <span class="s1">result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">f'https://api.themoviedb.org/3/search/tv?api_key=05ebc0015f05f55dfc28572481f18e26&amp;language=en-US&amp;query={</span><span class="s1">encoded_show</span><span class="s4">}&amp;page=1&amp;include_adult=false&amp;first_air_date_year={</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+    <span class="s1">show_json </span><span class="s3">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">loads</span><span class="s2">(</span><span class="s1">result</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+    <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">show_json</span><span class="s6">[</span><span class="s4">&quot;results&quot;</span><span class="s6">]</span><span class="s2">) </span><span class="s3">== </span><span class="s7">0</span><span class="s3">:</span>
+        <span class="s1">result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span>
+            <span class="s4">f'https://api.themoviedb.org/3/search/tv?api_key=05ebc0015f05f55dfc28572481f18e26&amp;language=en-US&amp;query={</span><span class="s1">encoded_show</span><span class="s4">}&amp;page=1&amp;include_adult=false'</span><span class="s2">)</span>
+        <span class="s1">show_json </span><span class="s3">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">loads</span><span class="s2">(</span><span class="s1">result</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+    <span class="s0">try</span><span class="s3">:</span>
+        <span class="s1">show </span><span class="s3">= </span><span class="s1">show_json</span><span class="s6">[</span><span class="s4">&quot;results&quot;</span><span class="s6">][</span><span class="s7">0</span><span class="s6">]</span>
+        <span class="s1">name </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;original_name&quot;</span><span class="s6">]</span>
+        <span class="s1">rating </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;vote_average&quot;</span><span class="s6">]</span>
+        <span class="s1">votes </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;vote_count&quot;</span><span class="s6">]</span>
+        <span class="s1">popularity </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;popularity&quot;</span><span class="s6">]</span>
+        <span class="s1">genres </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;genre_ids&quot;</span><span class="s6">]</span>
+        <span class="s1">tvdbId </span><span class="s3">= </span><span class="s1">show</span><span class="s6">[</span><span class="s4">&quot;id&quot;</span><span class="s6">]</span>
+        <span class="s0">if </span><span class="s7">99 </span><span class="s0">in </span><span class="s1">genres</span><span class="s3">:</span>
+            <span class="s0">pass</span>
+        <span class="s0">elif </span><span class="s1">rating </span><span class="s3">&lt; </span><span class="s7">6.0</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'FAILURE {</span><span class="s1">name</span><span class="s4">}: Rating too low'</span><span class="s2">)</span>
+            <span class="s1">print</span><span class="s2">(</span>
+                <span class="s4">f'name: {</span><span class="s1">name</span><span class="s4">}, rating: {</span><span class="s1">rating</span><span class="s4">}, votes: {</span><span class="s1">votes</span><span class="s4">}, popularity: {</span><span class="s1">popularity</span><span class="s4">}, id: {</span><span class="s1">show_id</span><span class="s4">}, monitored: {</span><span class="s1">monitored</span><span class="s4">}, year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+            <span class="s5">#show_exclusion(tvdbId, name, show_id)</span>
+            <span class="s1">delete_show</span><span class="s2">(</span><span class="s1">show_id</span><span class="s2">)</span>
+            <span class="s5">#requests.delete(f'http://{server_ip}:{sonarr_port}{sonarr_endpoint}/{show_id}', headers={&quot;X-Api-Key&quot;: sonarr_api_key}).text</span>
+        <span class="s0">elif </span><span class="s1">votes </span><span class="s3">&lt; </span><span class="s7">1</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'FAILURE {</span><span class="s1">name</span><span class="s4">}: Too few votes'</span><span class="s2">)</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'name: {</span><span class="s1">name</span><span class="s4">}, rating: {</span><span class="s1">rating</span><span class="s4">}, votes: {</span><span class="s1">votes</span><span class="s4">}, popularity: {</span><span class="s1">popularity</span><span class="s4">}, id: {</span><span class="s1">show_id</span><span class="s4">}, monitored: {</span><span class="s1">monitored</span><span class="s4">}, year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+            <span class="s5">#requests.delete(f'http://{server_ip}:{sonarr_port}{sonarr_endpoint}/{show_id}', headers={&quot;X-Api-Key&quot;: sonarr_api_key}).text</span>
+            <span class="s1">delete_show</span><span class="s2">(</span><span class="s1">show_id</span><span class="s2">)</span>
+        <span class="s0">elif </span><span class="s7">10762 </span><span class="s0">in </span><span class="s1">genres</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'FAILURE {</span><span class="s1">name</span><span class="s4">}: Kids genre'</span><span class="s2">)</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'name: {</span><span class="s1">name</span><span class="s4">}, rating: {</span><span class="s1">rating</span><span class="s4">}, votes: {</span><span class="s1">votes</span><span class="s4">}, popularity: {</span><span class="s1">popularity</span><span class="s4">}, id: {</span><span class="s1">show_id</span><span class="s4">}, monitored: {</span><span class="s1">monitored</span><span class="s4">}, year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+            <span class="s5">#requests.delete(f'http://{server_ip}:{sonarr_port}{sonarr_endpoint}/{show_id}', headers={&quot;X-Api-Key&quot;: sonarr_api_key}).text</span>
+            <span class="s1">delete_show</span><span class="s2">(</span><span class="s1">show_id</span><span class="s2">)</span>
+        <span class="s0">elif </span><span class="s7">10764 </span><span class="s0">in </span><span class="s1">genres</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'FAILURE {</span><span class="s1">name</span><span class="s4">}: Reality show'</span><span class="s2">)</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'name: {</span><span class="s1">name</span><span class="s4">}, rating: {</span><span class="s1">rating</span><span class="s4">}, votes: {</span><span class="s1">votes</span><span class="s4">}, popularity: {</span><span class="s1">popularity</span><span class="s4">}, id: {</span><span class="s1">show_id</span><span class="s4">}, monitored: {</span><span class="s1">monitored</span><span class="s4">}, year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+            <span class="s5">#requests.delete(f'http://{server_ip}:{sonarr_port}{sonarr_endpoint}/{show_id}', headers={&quot;X-Api-Key&quot;: sonarr_api_key}).text</span>
+            <span class="s5">#delete_show(show_id)</span>
+        <span class="s0">elif </span><span class="s7">10767 </span><span class="s0">in </span><span class="s1">genres</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'FAILURE {</span><span class="s1">name</span><span class="s4">}: Talk show'</span><span class="s2">)</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'name: {</span><span class="s1">name</span><span class="s4">}, rating: {</span><span class="s1">rating</span><span class="s4">}, votes: {</span><span class="s1">votes</span><span class="s4">}, popularity: {</span><span class="s1">popularity</span><span class="s4">}, id: {</span><span class="s1">show_id</span><span class="s4">}, monitored: {</span><span class="s1">monitored</span><span class="s4">}, year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+            <span class="s5">#requests.delete(f'http://{server_ip}:{sonarr_port}{sonarr_endpoint}/{show_id}', headers={&quot;X-Api-Key&quot;: sonarr_api_key}).text</span>
+            <span class="s1">delete_show</span><span class="s2">(</span><span class="s1">show_id</span><span class="s2">)</span>
+        <span class="s0">elif </span><span class="s7">10766 </span><span class="s0">in </span><span class="s1">genres</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'FAILURE {</span><span class="s1">name</span><span class="s4">}: Soap show'</span><span class="s2">)</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'name: {</span><span class="s1">name</span><span class="s4">}, rating: {</span><span class="s1">rating</span><span class="s4">}, votes: {</span><span class="s1">votes</span><span class="s4">}, popularity: {</span><span class="s1">popularity</span><span class="s4">}, id: {</span><span class="s1">show_id</span><span class="s4">}, monitored: {</span><span class="s1">monitored</span><span class="s4">}, year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+            <span class="s5">#requests.delete(f'http://{server_ip}:{sonarr_port}{sonarr_endpoint}/{show_id}', headers={&quot;X-Api-Key&quot;: sonarr_api_key}).text</span>
+            <span class="s1">delete_show</span><span class="s2">(</span><span class="s1">show_id</span><span class="s2">)</span>
+        <span class="s0">elif </span><span class="s7">10763 </span><span class="s0">in </span><span class="s1">genres</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'FAILURE {</span><span class="s1">name</span><span class="s4">}: News'</span><span class="s2">)</span>
+            <span class="s1">print</span><span class="s2">(</span><span class="s4">f'name: {</span><span class="s1">name</span><span class="s4">}, rating: {</span><span class="s1">rating</span><span class="s4">}, votes: {</span><span class="s1">votes</span><span class="s4">}, popularity: {</span><span class="s1">popularity</span><span class="s4">}, id: {</span><span class="s1">show_id</span><span class="s4">}, monitored: {</span><span class="s1">monitored</span><span class="s4">}, year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+            <span class="s5">#requests.delete(f'http://{server_ip}:{sonarr_port}{sonarr_endpoint}/{show_id}', headers={&quot;X-Api-Key&quot;: sonarr_api_key}).text</span>
+            <span class="s5">#show_exclusion(tvdbId, name, show_id)</span>
+            <span class="s1">delete_show</span><span class="s2">(</span><span class="s1">show_id</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s0">pass</span>
+            <span class="s5">#print(f'SUCCESS {name}')</span>
+            <span class="s5">#print(f'name: {name}, rating: {rating}, votes: {votes}, popularity: {popularity}, id: {show_id}, monitored: {monitored}, year: {year}')</span>
+    <span class="s0">except</span><span class="s3">:</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s4">f'&quot;{</span><span class="s1">show_name</span><span class="s4">}&quot;, id: {</span><span class="s1">show_id</span><span class="s4">}, from {</span><span class="s1">year</span><span class="s4">} not found'</span><span class="s2">)</span>
+
+<span class="s5">#==================================== MOVIES</span>
+
+
+<span class="s0">def </span><span class="s1">movie_genres</span><span class="s2">()</span><span class="s3">:</span>
+    <span class="s1">result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">f'https://api.themoviedb.org/3/genre/movie/list?api_key=05ebc0015f05f55dfc28572481f18e26'</span><span class="s2">).</span><span class="s1">text</span>
+    <span class="s1">print</span><span class="s2">(</span><span class="s1">result</span><span class="s2">)</span>
+
+<span class="s0">def </span><span class="s1">get_movies</span><span class="s2">()</span><span class="s3">:</span>
+    <span class="s1">radarr_endpoint </span><span class="s3">= </span><span class="s4">'/api/v3/movie'</span>
+    <span class="s1">movies_json </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">radarr_port</span><span class="s4">}{</span><span class="s1">radarr_endpoint</span><span class="s4">}'</span><span class="s2">,</span>
+                              <span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">radarr_api_key</span><span class="s6">}</span><span class="s2">).</span><span class="s1">text</span>
+    <span class="s1">movies </span><span class="s3">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">loads</span><span class="s2">(</span><span class="s1">movies_json</span><span class="s2">)</span>
+    <span class="s0">with </span><span class="s1">open</span><span class="s2">(</span><span class="s4">'good_movies.txt'</span><span class="s2">) </span><span class="s0">as </span><span class="s1">good_movies</span><span class="s3">:</span>
+        <span class="s1">good_movies_list </span><span class="s3">= </span><span class="s1">good_movies</span><span class="s2">.</span><span class="s1">read</span><span class="s2">().</span><span class="s1">splitlines</span><span class="s2">()</span>
+    <span class="s0">for </span><span class="s1">movie </span><span class="s0">in </span><span class="s1">movies</span><span class="s3">:</span>
+        <span class="s0">try</span><span class="s3">:</span>
+            <span class="s1">release_date </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;inCinemas&quot;</span><span class="s6">]</span>
+            <span class="s1">release_year </span><span class="s3">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">re</span><span class="s2">.</span><span class="s1">findall</span><span class="s2">(</span><span class="s4">'[\d]{4}'</span><span class="s2">, </span><span class="s4">f'{</span><span class="s1">release_date</span><span class="s4">}'</span><span class="s2">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s2">)</span>
+            <span class="s1">release_month </span><span class="s3">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">re</span><span class="s2">.</span><span class="s1">findall</span><span class="s2">(</span><span class="s4">'-([\d]{2})-'</span><span class="s2">, </span><span class="s4">f'{</span><span class="s1">release_date</span><span class="s4">}'</span><span class="s2">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s2">)</span>
+            <span class="s1">release_day </span><span class="s3">= </span><span class="s1">int</span><span class="s2">(</span><span class="s1">re</span><span class="s2">.</span><span class="s1">findall</span><span class="s2">(</span><span class="s4">'-([\d]{2})T'</span><span class="s2">, </span><span class="s4">f'{</span><span class="s1">release_date</span><span class="s4">}'</span><span class="s2">)</span><span class="s6">[</span><span class="s7">0</span><span class="s6">]</span><span class="s2">)</span>
+            <span class="s1">release_epoch </span><span class="s3">= </span><span class="s1">datetime</span><span class="s2">.</span><span class="s1">datetime</span><span class="s2">(</span><span class="s1">release_year</span><span class="s2">, </span><span class="s1">release_month</span><span class="s2">, </span><span class="s1">release_day</span><span class="s2">, </span><span class="s7">0</span><span class="s2">, </span><span class="s7">0</span><span class="s2">).</span><span class="s1">timestamp</span><span class="s2">()</span>
+            <span class="s1">today </span><span class="s3">= </span><span class="s1">time</span><span class="s2">.</span><span class="s1">time</span><span class="s2">()</span>
+            <span class="s1">release_delta </span><span class="s3">= </span><span class="s2">(</span><span class="s1">today </span><span class="s3">- </span><span class="s1">release_epoch</span><span class="s2">) </span><span class="s3">/ </span><span class="s7">60 </span><span class="s3">/ </span><span class="s7">60 </span><span class="s3">/ </span><span class="s7">24</span>
+        <span class="s0">except</span><span class="s3">:</span>
+            <span class="s1">release_delta </span><span class="s3">= </span><span class="s7">100</span>
+            <span class="s1">release_date </span><span class="s3">= </span><span class="s1">year</span>
+        <span class="s0">try</span><span class="s3">:</span>
+            <span class="s1">title </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;title&quot;</span><span class="s6">]</span>
+            <span class="s1">id </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;id&quot;</span><span class="s6">]</span>
+            <span class="s1">tmdbId </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;tmdbId&quot;</span><span class="s6">]</span>
+            <span class="s1">imdb_votes </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;ratings&quot;</span><span class="s6">][</span><span class="s4">&quot;imdb&quot;</span><span class="s6">][</span><span class="s4">&quot;votes&quot;</span><span class="s6">]</span>
+            <span class="s1">imdb_score </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;ratings&quot;</span><span class="s6">][</span><span class="s4">&quot;imdb&quot;</span><span class="s6">][</span><span class="s4">&quot;value&quot;</span><span class="s6">]</span>
+            <span class="s1">year </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;year&quot;</span><span class="s6">]</span>
+            <span class="s1">genre </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;genres&quot;</span><span class="s6">]</span>
+            <span class="s1">exempt_movies </span><span class="s3">= </span><span class="s6">[</span><span class="s4">'A Star Is Born'</span><span class="s2">, </span><span class="s4">'8 Mile'</span><span class="s2">, </span><span class="s4">'Bohemian Rhapsody'</span><span class="s2">, </span><span class="s4">'Whiplash'</span><span class="s2">, </span><span class="s4">'Rocketman'</span><span class="s2">, </span><span class="s4">'Marley'</span><span class="s6">]</span>
+            <span class="s0">if </span><span class="s1">title </span><span class="s0">in </span><span class="s1">exempt_movies </span><span class="s0">or </span><span class="s1">release_delta </span><span class="s3">&lt; </span><span class="s7">90 </span><span class="s0">or </span><span class="s1">title </span><span class="s0">in </span><span class="s1">good_movies_list</span><span class="s3">:</span>
+                <span class="s5">#print(f'{title} is a new movie released {release_date}')</span>
+                <span class="s0">pass</span>
+            <span class="s0">elif </span><span class="s1">imdb_score </span><span class="s3">&lt;= </span><span class="s7">6.3</span><span class="s3">:</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s4">&quot;Rating too low&quot;</span><span class="s2">)</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">title</span><span class="s4">} - id: {</span><span class="s1">id</span><span class="s4">} - votes: {</span><span class="s1">imdb_votes</span><span class="s4">} - score: {</span><span class="s1">imdb_score</span><span class="s4">} - year: {</span><span class="s1">year</span><span class="s4">}'</span><span class="s2">)</span>
+                <span class="s5">#print(movie[&quot;genres&quot;])</span>
+                <span class="s1">movie_exclusion</span><span class="s2">(</span><span class="s1">id</span><span class="s2">, </span><span class="s1">tmdbId</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span>
+                <span class="s1">delete_movie</span><span class="s2">(</span><span class="s1">id</span><span class="s2">)</span>
+            <span class="s0">elif </span><span class="s4">&quot;Music&quot; </span><span class="s0">in </span><span class="s1">genre</span><span class="s3">:</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">title</span><span class="s4">} is Music genre'</span><span class="s2">)</span>
+                <span class="s1">movie_exclusion</span><span class="s2">(</span><span class="s1">id</span><span class="s2">, </span><span class="s1">tmdbId</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span>
+                <span class="s1">delete_movie</span><span class="s2">(</span><span class="s1">id</span><span class="s2">)</span>
+            <span class="s0">elif </span><span class="s4">&quot;TV Movie&quot; </span><span class="s0">in </span><span class="s1">genre</span><span class="s3">:</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">title</span><span class="s4">} is TV genre'</span><span class="s2">)</span>
+                <span class="s1">movie_exclusion</span><span class="s2">(</span><span class="s1">id</span><span class="s2">, </span><span class="s1">tmdbId</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span>
+                <span class="s1">delete_movie</span><span class="s2">(</span><span class="s1">id</span><span class="s2">)</span>
+            <span class="s0">elif </span><span class="s4">&quot;Romance&quot; </span><span class="s0">in </span><span class="s1">genre </span><span class="s0">and </span><span class="s1">len</span><span class="s2">(</span><span class="s1">genre</span><span class="s2">) </span><span class="s3">== </span><span class="s7">1</span><span class="s3">:</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">title</span><span class="s4">} is Romance genre'</span><span class="s2">)</span>
+                <span class="s1">movie_exclusion</span><span class="s2">(</span><span class="s1">id</span><span class="s2">, </span><span class="s1">tmdbId</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span>
+                <span class="s1">delete_movie</span><span class="s2">(</span><span class="s1">id</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s3">:</span>
+                <span class="s5">#print(f'{title} - id: {id} - votes: {imdb_votes} - score: {imdb_score} - year: {year}')</span>
+                <span class="s0">with </span><span class="s1">open</span><span class="s2">(</span><span class="s4">'good_movies.txt'</span><span class="s2">,</span><span class="s4">'a'</span><span class="s2">) </span><span class="s0">as </span><span class="s1">good_movies</span><span class="s3">:</span>
+                    <span class="s1">good_movies</span><span class="s2">.</span><span class="s1">write</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">title</span><span class="s4">}\n'</span><span class="s2">)</span>
+        <span class="s0">except</span><span class="s3">:</span>
+            <span class="s0">if </span><span class="s1">release_delta </span><span class="s3">&lt; </span><span class="s7">90</span><span class="s3">:</span>
+                <span class="s5">#print(f'{title} is a new movie released {release_date}')</span>
+                <span class="s0">pass</span>
+            <span class="s0">else</span><span class="s3">:</span>
+                <span class="s0">pass</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;title&quot;</span><span class="s6">]</span><span class="s4">} year: {</span><span class="s1">year</span><span class="s4">} delta = {</span><span class="s1">release_delta</span><span class="s4">} fucked up'</span><span class="s2">)</span>
+                <span class="s5">#print(movie[&quot;genres&quot;])</span>
+                <span class="s1">movie_exclusion</span><span class="s2">(</span><span class="s1">tmdbId</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span>
+                <span class="s1">delete_movie</span><span class="s2">(</span><span class="s1">id</span><span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">delete_movie</span><span class="s2">(</span><span class="s1">movie_id</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s0">try</span><span class="s3">:</span>
+        <span class="s1">radarr_endpoint </span><span class="s3">= </span><span class="s4">'/api/v3/movie'</span>
+        <span class="s1">movie_json </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">radarr_port</span><span class="s4">}{</span><span class="s1">radarr_endpoint</span><span class="s4">}/{</span><span class="s1">movie_id</span><span class="s4">}'</span><span class="s2">,</span>
+                                  <span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">radarr_api_key</span><span class="s6">}</span><span class="s2">).</span><span class="s1">text</span>
+        <span class="s1">movie </span><span class="s3">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">loads</span><span class="s2">(</span><span class="s1">movie_json</span><span class="s2">)</span>
+        <span class="s1">quality </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;qualityProfileId&quot;</span><span class="s6">]</span>
+        <span class="s1">rootFolderPath </span><span class="s3">= </span><span class="s1">unidecode</span><span class="s2">(</span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;path&quot;</span><span class="s6">]</span><span class="s2">)</span>
+        <span class="s1">tags </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;tags&quot;</span><span class="s6">]</span>
+        <span class="s1">load </span><span class="s3">= </span><span class="s4">f'&quot;movieIds&quot;: [{</span><span class="s1">movie_id</span><span class="s4">}], &quot;monitored&quot;: false, &quot;qualityProfileId&quot;: {</span><span class="s1">quality</span><span class="s4">}, &quot;minimumAvailability&quot;: &quot;tba&quot;, &quot;rootFolderPath&quot;: &quot;{</span><span class="s1">rootFolderPath</span><span class="s4">}&quot;, &quot;tags&quot;: {</span><span class="s1">tags</span><span class="s4">}, &quot;applyTags&quot;: &quot;add&quot;, &quot;moveFiles&quot;: true, &quot;deleteFiles&quot;: true, &quot;addImportListExclusion&quot;: true'</span>
+        <span class="s1">load </span><span class="s3">= </span><span class="s4">&quot;{&quot; </span><span class="s3">+ </span><span class="s1">load </span><span class="s3">+ </span><span class="s4">&quot;}&quot;</span>
+        <span class="s1">result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">delete</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">radarr_port</span><span class="s4">}/api/v3/movie/editor'</span><span class="s2">, </span><span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">radarr_api_key</span><span class="s2">, </span><span class="s4">&quot;Content-Type&quot;</span><span class="s3">: </span><span class="s4">&quot;application/json; Charset=UTF-8&quot;</span><span class="s6">}</span><span class="s2">, </span><span class="s1">data</span><span class="s3">=</span><span class="s1">load</span><span class="s2">)</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s1">result</span><span class="s2">.</span><span class="s1">status_code</span><span class="s2">)</span>
+    <span class="s0">except</span><span class="s3">:</span>
+        <span class="s0">pass</span>
+
+<span class="s0">def </span><span class="s1">movie_exclusion</span><span class="s2">(</span><span class="s1">id</span><span class="s2">, </span><span class="s1">tmdbid</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">year</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s0">try</span><span class="s3">:</span>
+        <span class="s1">title </span><span class="s3">= </span><span class="s1">urllib</span><span class="s2">.</span><span class="s1">parse</span><span class="s2">.</span><span class="s1">quote_plus</span><span class="s2">(</span><span class="s1">title</span><span class="s2">)</span>
+        <span class="s1">exclusion_endpoint </span><span class="s3">= </span><span class="s4">&quot;/api/v3/exclusions/&quot;</span>
+        <span class="s5">#title = urllib.parse.quote_plus(title)</span>
+        <span class="s1">load </span><span class="s3">= </span><span class="s4">f'&quot;id&quot;: {</span><span class="s1">id</span><span class="s4">}, &quot;movieTitle&quot;: &quot;{</span><span class="s1">title</span><span class="s4">}&quot;, &quot;movieYear&quot;: {</span><span class="s1">year</span><span class="s4">}'</span>
+        <span class="s1">load </span><span class="s3">= </span><span class="s4">&quot;{&quot; </span><span class="s3">+ </span><span class="s1">load </span><span class="s3">+ </span><span class="s4">&quot;}&quot;</span>
+        <span class="s1">get_result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">post</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">radarr_port</span><span class="s4">}{</span><span class="s1">exclusion_endpoint</span><span class="s4">}'</span><span class="s2">, </span><span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">radarr_api_key</span><span class="s2">, </span><span class="s4">&quot;Content-Type&quot;</span><span class="s3">: </span><span class="s4">&quot;application/json; Charset=UTF-8&quot;</span><span class="s6">}</span><span class="s2">, </span><span class="s1">data</span><span class="s3">=</span><span class="s1">load</span><span class="s2">)</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s1">get_result</span><span class="s2">.</span><span class="s1">status_code</span><span class="s2">)</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s1">get_result</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s5">#result = requests.put(f'http://{server_ip}:{radarr_port}{exclusion_endpoint}/{movie_id}', headers={&quot;X-Api-Key&quot;: radarr_api_key, &quot;Content-Type&quot;: &quot;application/json&quot;}, data=load)</span>
+        <span class="s1">time</span><span class="s2">.</span><span class="s1">sleep</span><span class="s2">(</span><span class="s7">60</span><span class="s2">)</span>
+    <span class="s0">except</span><span class="s3">:</span>
+        <span class="s0">pass</span>
+        <span class="s1">print</span><span class="s2">(</span><span class="s4">&quot;Exclusion Failed&quot;</span><span class="s2">)</span>
+        <span class="s1">time</span><span class="s2">.</span><span class="s1">sleep</span><span class="s2">(</span><span class="s7">60</span><span class="s2">)</span>
+
+<span class="s0">def </span><span class="s1">find_movies</span><span class="s2">()</span><span class="s3">:</span>
+    <span class="s1">exclude_genres </span><span class="s3">= </span><span class="s6">[</span><span class="s7">10402</span><span class="s2">, </span><span class="s7">10770</span><span class="s6">]</span>
+    <span class="s1">page </span><span class="s3">= </span><span class="s7">1</span>
+    <span class="s0">while </span><span class="s1">page </span><span class="s3">&lt; </span><span class="s7">1000</span><span class="s3">:</span>
+        <span class="s1">top_movies </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span>
+            <span class="s4">f'https://api.themoviedb.org/3/movie/popular?api_key=05ebc0015f05f55dfc28572481f18e26&amp;language=en-US&amp;page={</span><span class="s1">page</span><span class="s4">}'</span><span class="s2">)</span>
+        <span class="s1">show_json </span><span class="s3">= </span><span class="s1">json</span><span class="s2">.</span><span class="s1">loads</span><span class="s2">(</span><span class="s1">top_movies</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+        <span class="s1">results </span><span class="s3">= </span><span class="s1">show_json</span><span class="s6">[</span><span class="s4">&quot;results&quot;</span><span class="s6">]</span>
+        <span class="s0">for </span><span class="s1">movie </span><span class="s0">in </span><span class="s1">results</span><span class="s3">:</span>
+            <span class="s0">if </span><span class="s7">10402 </span><span class="s0">in </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;genre_ids&quot;</span><span class="s6">] </span><span class="s0">or </span><span class="s7">10770 </span><span class="s0">in </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;genre_ids&quot;</span><span class="s6">]</span><span class="s3">:</span>
+                <span class="s0">break</span>
+            <span class="s0">if </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;vote_count&quot;</span><span class="s6">] </span><span class="s3">&gt; </span><span class="s7">200 </span><span class="s0">and </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;vote_average&quot;</span><span class="s6">] </span><span class="s3">&gt; </span><span class="s7">6.5</span><span class="s3">:</span>
+                <span class="s1">id </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;id&quot;</span><span class="s6">]</span>
+                <span class="s1">title </span><span class="s3">= </span><span class="s1">movie</span><span class="s6">[</span><span class="s4">&quot;title&quot;</span><span class="s6">]</span>
+                <span class="s1">title </span><span class="s3">= </span><span class="s4">&quot;Black Adam&quot;</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s4">f'{</span><span class="s1">title</span><span class="s4">}'</span><span class="s2">)</span>
+                <span class="s1">load </span><span class="s3">= </span><span class="s4">f'&quot;tmdbId&quot;: {</span><span class="s1">id</span><span class="s4">}, &quot;title&quot;: &quot;{</span><span class="s1">title</span><span class="s4">}&quot;, &quot;monitored&quot;: true, &quot;QualityProfileId&quot;: 4'</span>
+                <span class="s1">load </span><span class="s3">= </span><span class="s4">&quot;{&quot; </span><span class="s3">+ </span><span class="s1">load </span><span class="s3">+ </span><span class="s4">&quot;}&quot;</span>
+                <span class="s1">result </span><span class="s3">= </span><span class="s1">requests</span><span class="s2">.</span><span class="s1">post</span><span class="s2">(</span><span class="s4">f'http://{</span><span class="s1">server_ip</span><span class="s4">}:{</span><span class="s1">radarr_port</span><span class="s4">}/api/v3/movie'</span><span class="s2">,</span><span class="s1">headers</span><span class="s3">=</span><span class="s6">{</span><span class="s4">&quot;X-Api-Key&quot;</span><span class="s3">: </span><span class="s1">radarr_api_key</span><span class="s2">, </span><span class="s4">&quot;Content-Type&quot;</span><span class="s3">: </span><span class="s4">&quot;application/json; Charset=UTF-8&quot;</span><span class="s6">}</span><span class="s2">,</span><span class="s1">data</span><span class="s3">=</span><span class="s1">load</span><span class="s2">)</span>
+                <span class="s1">print</span><span class="s2">(</span><span class="s1">result</span><span class="s2">.</span><span class="s1">text</span><span class="s2">)</span>
+                <span class="s0">break</span>
+        <span class="s1">page </span><span class="s3">+= </span><span class="s7">1</span>
+        <span class="s0">break</span>
+
+
+
+
+<span class="s5">#movie_genres()</span>
+
+<span class="s5">#get_movies()</span>
+
+<span class="s5">#find_movies()</span>
+
+<span class="s5">#one_show()</span>
+
+<span class="s1">get_shows</span><span class="s2">()</span>
+
+<span class="s5">#delete_show()</span>
+
+<span class="s5">#tv_genres()</span>
+
+<span class="s5">#show_rating(&quot;Snitch&quot;,&quot;2564&quot;,&quot;true&quot;,2021)</span></pre>
+</body>
+</html>

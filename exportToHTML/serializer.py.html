@@ -1,0 +1,433 @@
+<html>
+<head>
+<title>serializer.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #b877db; font-style: italic;}
+.s1 { color: #b6c4f2;}
+.s2 { color: #b4c2f0;}
+.s3 { color: #baacff;}
+.s4 { color: #64d1a9;}
+.s5 { color: #7fdaff;}
+.s6 { color: #ff9668;}
+.s7 { color: #475f76;}
+</style>
+</head>
+<body bgcolor="#1c1e26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+serializer.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span><span class="s2">, </span><span class="s1">division</span><span class="s2">, </span><span class="s1">unicode_literals</span>
+<span class="s0">from </span><span class="s1">pip</span><span class="s2">.</span><span class="s1">_vendor</span><span class="s2">.</span><span class="s1">six </span><span class="s0">import </span><span class="s1">text_type</span>
+
+<span class="s0">import </span><span class="s1">re</span>
+
+<span class="s0">from </span><span class="s1">codecs </span><span class="s0">import </span><span class="s1">register_error</span><span class="s2">, </span><span class="s1">xmlcharrefreplace_errors</span>
+
+<span class="s0">from </span><span class="s2">.</span><span class="s1">constants </span><span class="s0">import </span><span class="s1">voidElements</span><span class="s2">, </span><span class="s1">booleanAttributes</span><span class="s2">, </span><span class="s1">spaceCharacters</span>
+<span class="s0">from </span><span class="s2">.</span><span class="s1">constants </span><span class="s0">import </span><span class="s1">rcdataElements</span><span class="s2">, </span><span class="s1">entities</span><span class="s2">, </span><span class="s1">xmlEntities</span>
+<span class="s0">from </span><span class="s2">. </span><span class="s0">import </span><span class="s1">treewalkers</span><span class="s2">, </span><span class="s1">_utils</span>
+<span class="s0">from </span><span class="s1">xml</span><span class="s2">.</span><span class="s1">sax</span><span class="s2">.</span><span class="s1">saxutils </span><span class="s0">import </span><span class="s1">escape</span>
+
+<span class="s1">_quoteAttributeSpecChars </span><span class="s3">= </span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">spaceCharacters</span><span class="s2">) </span><span class="s3">+ </span><span class="s4">&quot;\&quot;'=&lt;&gt;`&quot;</span>
+<span class="s1">_quoteAttributeSpec </span><span class="s3">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">compile</span><span class="s2">(</span><span class="s4">&quot;[&quot; </span><span class="s3">+ </span><span class="s1">_quoteAttributeSpecChars </span><span class="s3">+ </span><span class="s4">&quot;]&quot;</span><span class="s2">)</span>
+<span class="s1">_quoteAttributeLegacy </span><span class="s3">= </span><span class="s1">re</span><span class="s2">.</span><span class="s1">compile</span><span class="s2">(</span><span class="s4">&quot;[&quot; </span><span class="s3">+ </span><span class="s1">_quoteAttributeSpecChars </span><span class="s3">+</span>
+                                   <span class="s4">&quot;\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n&quot;</span>
+                                   <span class="s4">&quot;\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15&quot;</span>
+                                   <span class="s4">&quot;\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f&quot;</span>
+                                   <span class="s4">&quot;\x20\x2f\x60\xa0\u1680\u180e\u180f\u2000&quot;</span>
+                                   <span class="s4">&quot;\u2001\u2002\u2003\u2004\u2005\u2006\u2007&quot;</span>
+                                   <span class="s4">&quot;\u2008\u2009\u200a\u2028\u2029\u202f\u205f&quot;</span>
+                                   <span class="s4">&quot;\u3000]&quot;</span><span class="s2">)</span>
+
+
+<span class="s1">_encode_entity_map </span><span class="s3">= </span><span class="s5">{}</span>
+<span class="s1">_is_ucs4 </span><span class="s3">= </span><span class="s1">len</span><span class="s2">(</span><span class="s4">&quot;\U0010FFFF&quot;</span><span class="s2">) </span><span class="s3">== </span><span class="s6">1</span>
+<span class="s0">for </span><span class="s1">k</span><span class="s2">, </span><span class="s1">v </span><span class="s0">in </span><span class="s1">list</span><span class="s2">(</span><span class="s1">entities</span><span class="s2">.</span><span class="s1">items</span><span class="s2">())</span><span class="s3">:</span>
+    <span class="s7"># skip multi-character entities</span>
+    <span class="s0">if </span><span class="s2">((</span><span class="s1">_is_ucs4 </span><span class="s0">and </span><span class="s1">len</span><span class="s2">(</span><span class="s1">v</span><span class="s2">) </span><span class="s3">&gt; </span><span class="s6">1</span><span class="s2">) </span><span class="s0">or</span>
+            <span class="s2">(</span><span class="s0">not </span><span class="s1">_is_ucs4 </span><span class="s0">and </span><span class="s1">len</span><span class="s2">(</span><span class="s1">v</span><span class="s2">) </span><span class="s3">&gt; </span><span class="s6">2</span><span class="s2">))</span><span class="s3">:</span>
+        <span class="s0">continue</span>
+    <span class="s0">if </span><span class="s1">v </span><span class="s3">!= </span><span class="s4">&quot;&amp;&quot;</span><span class="s3">:</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">v</span><span class="s2">) </span><span class="s3">== </span><span class="s6">2</span><span class="s3">:</span>
+            <span class="s1">v </span><span class="s3">= </span><span class="s1">_utils</span><span class="s2">.</span><span class="s1">surrogatePairToCodepoint</span><span class="s2">(</span><span class="s1">v</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s1">v </span><span class="s3">= </span><span class="s1">ord</span><span class="s2">(</span><span class="s1">v</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">v </span><span class="s0">not in </span><span class="s1">_encode_entity_map </span><span class="s0">or </span><span class="s1">k</span><span class="s2">.</span><span class="s1">islower</span><span class="s2">()</span><span class="s3">:</span>
+            <span class="s7"># prefer &amp;lt; over &amp;LT; and similarly for &amp;amp;, &amp;gt;, etc.</span>
+            <span class="s1">_encode_entity_map</span><span class="s5">[</span><span class="s1">v</span><span class="s5">] </span><span class="s3">= </span><span class="s1">k</span>
+
+
+<span class="s0">def </span><span class="s1">htmlentityreplace_errors</span><span class="s2">(</span><span class="s1">exc</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s0">if </span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">exc</span><span class="s2">, (</span><span class="s1">UnicodeEncodeError</span><span class="s2">, </span><span class="s1">UnicodeTranslateError</span><span class="s2">))</span><span class="s3">:</span>
+        <span class="s1">res </span><span class="s3">= </span><span class="s5">[]</span>
+        <span class="s1">codepoints </span><span class="s3">= </span><span class="s5">[]</span>
+        <span class="s1">skip </span><span class="s3">= </span><span class="s0">False</span>
+        <span class="s0">for </span><span class="s1">i</span><span class="s2">, </span><span class="s1">c </span><span class="s0">in </span><span class="s1">enumerate</span><span class="s2">(</span><span class="s1">exc</span><span class="s2">.</span><span class="s1">object</span><span class="s5">[</span><span class="s1">exc</span><span class="s2">.</span><span class="s1">start</span><span class="s3">:</span><span class="s1">exc</span><span class="s2">.</span><span class="s1">end</span><span class="s5">]</span><span class="s2">)</span><span class="s3">:</span>
+            <span class="s0">if </span><span class="s1">skip</span><span class="s3">:</span>
+                <span class="s1">skip </span><span class="s3">= </span><span class="s0">False</span>
+                <span class="s0">continue</span>
+            <span class="s1">index </span><span class="s3">= </span><span class="s1">i </span><span class="s3">+ </span><span class="s1">exc</span><span class="s2">.</span><span class="s1">start</span>
+            <span class="s0">if </span><span class="s1">_utils</span><span class="s2">.</span><span class="s1">isSurrogatePair</span><span class="s2">(</span><span class="s1">exc</span><span class="s2">.</span><span class="s1">object</span><span class="s5">[</span><span class="s1">index</span><span class="s3">:</span><span class="s1">min</span><span class="s2">(</span><span class="s5">[</span><span class="s1">exc</span><span class="s2">.</span><span class="s1">end</span><span class="s2">, </span><span class="s1">index </span><span class="s3">+ </span><span class="s6">2</span><span class="s5">]</span><span class="s2">)</span><span class="s5">]</span><span class="s2">)</span><span class="s3">:</span>
+                <span class="s1">codepoint </span><span class="s3">= </span><span class="s1">_utils</span><span class="s2">.</span><span class="s1">surrogatePairToCodepoint</span><span class="s2">(</span><span class="s1">exc</span><span class="s2">.</span><span class="s1">object</span><span class="s5">[</span><span class="s1">index</span><span class="s3">:</span><span class="s1">index </span><span class="s3">+ </span><span class="s6">2</span><span class="s5">]</span><span class="s2">)</span>
+                <span class="s1">skip </span><span class="s3">= </span><span class="s0">True</span>
+            <span class="s0">else</span><span class="s3">:</span>
+                <span class="s1">codepoint </span><span class="s3">= </span><span class="s1">ord</span><span class="s2">(</span><span class="s1">c</span><span class="s2">)</span>
+            <span class="s1">codepoints</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">codepoint</span><span class="s2">)</span>
+        <span class="s0">for </span><span class="s1">cp </span><span class="s0">in </span><span class="s1">codepoints</span><span class="s3">:</span>
+            <span class="s1">e </span><span class="s3">= </span><span class="s1">_encode_entity_map</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">cp</span><span class="s2">)</span>
+            <span class="s0">if </span><span class="s1">e</span><span class="s3">:</span>
+                <span class="s1">res</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot;&amp;&quot;</span><span class="s2">)</span>
+                <span class="s1">res</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">e</span><span class="s2">)</span>
+                <span class="s0">if not </span><span class="s1">e</span><span class="s2">.</span><span class="s1">endswith</span><span class="s2">(</span><span class="s4">&quot;;&quot;</span><span class="s2">)</span><span class="s3">:</span>
+                    <span class="s1">res</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot;;&quot;</span><span class="s2">)</span>
+            <span class="s0">else</span><span class="s3">:</span>
+                <span class="s1">res</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s4">&quot;&amp;#x%s;&quot; </span><span class="s3">% </span><span class="s2">(</span><span class="s1">hex</span><span class="s2">(</span><span class="s1">cp</span><span class="s2">)</span><span class="s5">[</span><span class="s6">2</span><span class="s3">:</span><span class="s5">]</span><span class="s2">))</span>
+        <span class="s0">return </span><span class="s2">(</span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">res</span><span class="s2">), </span><span class="s1">exc</span><span class="s2">.</span><span class="s1">end</span><span class="s2">)</span>
+    <span class="s0">else</span><span class="s3">:</span>
+        <span class="s0">return </span><span class="s1">xmlcharrefreplace_errors</span><span class="s2">(</span><span class="s1">exc</span><span class="s2">)</span>
+
+
+<span class="s1">register_error</span><span class="s2">(</span><span class="s4">&quot;htmlentityreplace&quot;</span><span class="s2">, </span><span class="s1">htmlentityreplace_errors</span><span class="s2">)</span>
+
+
+<span class="s0">def </span><span class="s1">serialize</span><span class="s2">(</span><span class="s1">input</span><span class="s2">, </span><span class="s1">tree</span><span class="s3">=</span><span class="s4">&quot;etree&quot;</span><span class="s2">, </span><span class="s1">encoding</span><span class="s3">=</span><span class="s0">None</span><span class="s2">, </span><span class="s3">**</span><span class="s1">serializer_opts</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s7">&quot;&quot;&quot;Serializes the input token stream using the specified treewalker 
+ 
+    :arg input: the token stream to serialize 
+ 
+    :arg tree: the treewalker to use 
+ 
+    :arg encoding: the encoding to use 
+ 
+    :arg serializer_opts: any options to pass to the 
+        :py:class:`html5lib.serializer.HTMLSerializer` that gets created 
+ 
+    :returns: the tree serialized as a string 
+ 
+    Example: 
+ 
+    &gt;&gt;&gt; from html5lib.html5parser import parse 
+    &gt;&gt;&gt; from html5lib.serializer import serialize 
+    &gt;&gt;&gt; token_stream = parse('&lt;html&gt;&lt;body&gt;&lt;p&gt;Hi!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;') 
+    &gt;&gt;&gt; serialize(token_stream, omit_optional_tags=False) 
+    '&lt;html&gt;&lt;head&gt;&lt;/head&gt;&lt;body&gt;&lt;p&gt;Hi!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;' 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s7"># XXX: Should we cache this?</span>
+    <span class="s1">walker </span><span class="s3">= </span><span class="s1">treewalkers</span><span class="s2">.</span><span class="s1">getTreeWalker</span><span class="s2">(</span><span class="s1">tree</span><span class="s2">)</span>
+    <span class="s1">s </span><span class="s3">= </span><span class="s1">HTMLSerializer</span><span class="s2">(</span><span class="s3">**</span><span class="s1">serializer_opts</span><span class="s2">)</span>
+    <span class="s0">return </span><span class="s1">s</span><span class="s2">.</span><span class="s1">render</span><span class="s2">(</span><span class="s1">walker</span><span class="s2">(</span><span class="s1">input</span><span class="s2">), </span><span class="s1">encoding</span><span class="s2">)</span>
+
+
+<span class="s0">class </span><span class="s1">HTMLSerializer</span><span class="s2">(</span><span class="s1">object</span><span class="s2">)</span><span class="s3">:</span>
+
+    <span class="s7"># attribute quoting options</span>
+    <span class="s1">quote_attr_values </span><span class="s3">= </span><span class="s4">&quot;legacy&quot;  </span><span class="s7"># be secure by default</span>
+    <span class="s1">quote_char </span><span class="s3">= </span><span class="s4">'&quot;'</span>
+    <span class="s1">use_best_quote_char </span><span class="s3">= </span><span class="s0">True</span>
+
+    <span class="s7"># tag syntax options</span>
+    <span class="s1">omit_optional_tags </span><span class="s3">= </span><span class="s0">True</span>
+    <span class="s1">minimize_boolean_attributes </span><span class="s3">= </span><span class="s0">True</span>
+    <span class="s1">use_trailing_solidus </span><span class="s3">= </span><span class="s0">False</span>
+    <span class="s1">space_before_trailing_solidus </span><span class="s3">= </span><span class="s0">True</span>
+
+    <span class="s7"># escaping options</span>
+    <span class="s1">escape_lt_in_attrs </span><span class="s3">= </span><span class="s0">False</span>
+    <span class="s1">escape_rcdata </span><span class="s3">= </span><span class="s0">False</span>
+    <span class="s1">resolve_entities </span><span class="s3">= </span><span class="s0">True</span>
+
+    <span class="s7"># miscellaneous options</span>
+    <span class="s1">alphabetical_attributes </span><span class="s3">= </span><span class="s0">False</span>
+    <span class="s1">inject_meta_charset </span><span class="s3">= </span><span class="s0">True</span>
+    <span class="s1">strip_whitespace </span><span class="s3">= </span><span class="s0">False</span>
+    <span class="s1">sanitize </span><span class="s3">= </span><span class="s0">False</span>
+
+    <span class="s1">options </span><span class="s3">= </span><span class="s2">(</span><span class="s4">&quot;quote_attr_values&quot;</span><span class="s2">, </span><span class="s4">&quot;quote_char&quot;</span><span class="s2">, </span><span class="s4">&quot;use_best_quote_char&quot;</span><span class="s2">,</span>
+               <span class="s4">&quot;omit_optional_tags&quot;</span><span class="s2">, </span><span class="s4">&quot;minimize_boolean_attributes&quot;</span><span class="s2">,</span>
+               <span class="s4">&quot;use_trailing_solidus&quot;</span><span class="s2">, </span><span class="s4">&quot;space_before_trailing_solidus&quot;</span><span class="s2">,</span>
+               <span class="s4">&quot;escape_lt_in_attrs&quot;</span><span class="s2">, </span><span class="s4">&quot;escape_rcdata&quot;</span><span class="s2">, </span><span class="s4">&quot;resolve_entities&quot;</span><span class="s2">,</span>
+               <span class="s4">&quot;alphabetical_attributes&quot;</span><span class="s2">, </span><span class="s4">&quot;inject_meta_charset&quot;</span><span class="s2">,</span>
+               <span class="s4">&quot;strip_whitespace&quot;</span><span class="s2">, </span><span class="s4">&quot;sanitize&quot;</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s3">**</span><span class="s1">kwargs</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s7">&quot;&quot;&quot;Initialize HTMLSerializer 
+ 
+        :arg inject_meta_charset: Whether or not to inject the meta charset. 
+ 
+            Defaults to ``True``. 
+ 
+        :arg quote_attr_values: Whether to quote attribute values that don't 
+            require quoting per legacy browser behavior (``&quot;legacy&quot;``), when 
+            required by the standard (``&quot;spec&quot;``), or always (``&quot;always&quot;``). 
+ 
+            Defaults to ``&quot;legacy&quot;``. 
+ 
+        :arg quote_char: Use given quote character for attribute quoting. 
+ 
+            Defaults to ``&quot;`` which will use double quotes unless attribute 
+            value contains a double quote, in which case single quotes are 
+            used. 
+ 
+        :arg escape_lt_in_attrs: Whether or not to escape ``&lt;`` in attribute 
+            values. 
+ 
+            Defaults to ``False``. 
+ 
+        :arg escape_rcdata: Whether to escape characters that need to be 
+            escaped within normal elements within rcdata elements such as 
+            style. 
+ 
+            Defaults to ``False``. 
+ 
+        :arg resolve_entities: Whether to resolve named character entities that 
+            appear in the source tree. The XML predefined entities &amp;lt; &amp;gt; 
+            &amp;amp; &amp;quot; &amp;apos; are unaffected by this setting. 
+ 
+            Defaults to ``True``. 
+ 
+        :arg strip_whitespace: Whether to remove semantically meaningless 
+            whitespace. (This compresses all whitespace to a single space 
+            except within ``pre``.) 
+ 
+            Defaults to ``False``. 
+ 
+        :arg minimize_boolean_attributes: Shortens boolean attributes to give 
+            just the attribute value, for example:: 
+ 
+              &lt;input disabled=&quot;disabled&quot;&gt; 
+ 
+            becomes:: 
+ 
+              &lt;input disabled&gt; 
+ 
+            Defaults to ``True``. 
+ 
+        :arg use_trailing_solidus: Includes a close-tag slash at the end of the 
+            start tag of void elements (empty elements whose end tag is 
+            forbidden). E.g. ``&lt;hr/&gt;``. 
+ 
+            Defaults to ``False``. 
+ 
+        :arg space_before_trailing_solidus: Places a space immediately before 
+            the closing slash in a tag using a trailing solidus. E.g. 
+            ``&lt;hr /&gt;``. Requires ``use_trailing_solidus=True``. 
+ 
+            Defaults to ``True``. 
+ 
+        :arg sanitize: Strip all unsafe or unknown constructs from output. 
+            See :py:class:`html5lib.filters.sanitizer.Filter`. 
+ 
+            Defaults to ``False``. 
+ 
+        :arg omit_optional_tags: Omit start/end tags that are optional. 
+ 
+            Defaults to ``True``. 
+ 
+        :arg alphabetical_attributes: Reorder attributes to be in alphabetical order. 
+ 
+            Defaults to ``False``. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">unexpected_args </span><span class="s3">= </span><span class="s1">frozenset</span><span class="s2">(</span><span class="s1">kwargs</span><span class="s2">) </span><span class="s3">- </span><span class="s1">frozenset</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">options</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">len</span><span class="s2">(</span><span class="s1">unexpected_args</span><span class="s2">) </span><span class="s3">&gt; </span><span class="s6">0</span><span class="s3">:</span>
+            <span class="s0">raise </span><span class="s1">TypeError</span><span class="s2">(</span><span class="s4">&quot;__init__() got an unexpected keyword argument '%s'&quot; </span><span class="s3">% </span><span class="s1">next</span><span class="s2">(</span><span class="s1">iter</span><span class="s2">(</span><span class="s1">unexpected_args</span><span class="s2">)))</span>
+        <span class="s0">if </span><span class="s4">'quote_char' </span><span class="s0">in </span><span class="s1">kwargs</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s2">.</span><span class="s1">use_best_quote_char </span><span class="s3">= </span><span class="s0">False</span>
+        <span class="s0">for </span><span class="s1">attr </span><span class="s0">in </span><span class="s1">self</span><span class="s2">.</span><span class="s1">options</span><span class="s3">:</span>
+            <span class="s1">setattr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">attr</span><span class="s2">, </span><span class="s1">kwargs</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">attr</span><span class="s2">, </span><span class="s1">getattr</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">attr</span><span class="s2">)))</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">errors </span><span class="s3">= </span><span class="s5">[]</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">strict </span><span class="s3">= </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">encode</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">string</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">assert</span><span class="s2">(</span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">string</span><span class="s2">, </span><span class="s1">text_type</span><span class="s2">))</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encoding</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">string</span><span class="s2">.</span><span class="s1">encode</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">encoding</span><span class="s2">, </span><span class="s4">&quot;htmlentityreplace&quot;</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">string</span>
+
+    <span class="s0">def </span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">string</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s0">assert</span><span class="s2">(</span><span class="s1">isinstance</span><span class="s2">(</span><span class="s1">string</span><span class="s2">, </span><span class="s1">text_type</span><span class="s2">))</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encoding</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">string</span><span class="s2">.</span><span class="s1">encode</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">encoding</span><span class="s2">, </span><span class="s4">&quot;strict&quot;</span><span class="s2">)</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s1">string</span>
+
+    <span class="s0">def </span><span class="s1">serialize</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">treewalker</span><span class="s2">, </span><span class="s1">encoding</span><span class="s3">=</span><span class="s0">None</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s7"># pylint:disable=too-many-nested-blocks</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">encoding </span><span class="s3">= </span><span class="s1">encoding</span>
+        <span class="s1">in_cdata </span><span class="s3">= </span><span class="s0">False</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">errors </span><span class="s3">= </span><span class="s5">[]</span>
+
+        <span class="s0">if </span><span class="s1">encoding </span><span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">inject_meta_charset</span><span class="s3">:</span>
+            <span class="s0">from </span><span class="s2">.</span><span class="s1">filters</span><span class="s2">.</span><span class="s1">inject_meta_charset </span><span class="s0">import </span><span class="s1">Filter</span>
+            <span class="s1">treewalker </span><span class="s3">= </span><span class="s1">Filter</span><span class="s2">(</span><span class="s1">treewalker</span><span class="s2">, </span><span class="s1">encoding</span><span class="s2">)</span>
+        <span class="s7"># Alphabetical attributes is here under the assumption that none of</span>
+        <span class="s7"># the later filters add or change order of attributes; it needs to be</span>
+        <span class="s7"># before the sanitizer so escaped elements come out correctly</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">alphabetical_attributes</span><span class="s3">:</span>
+            <span class="s0">from </span><span class="s2">.</span><span class="s1">filters</span><span class="s2">.</span><span class="s1">alphabeticalattributes </span><span class="s0">import </span><span class="s1">Filter</span>
+            <span class="s1">treewalker </span><span class="s3">= </span><span class="s1">Filter</span><span class="s2">(</span><span class="s1">treewalker</span><span class="s2">)</span>
+        <span class="s7"># WhitespaceFilter should be used before OptionalTagFilter</span>
+        <span class="s7"># for maximum efficiently of this latter filter</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">strip_whitespace</span><span class="s3">:</span>
+            <span class="s0">from </span><span class="s2">.</span><span class="s1">filters</span><span class="s2">.</span><span class="s1">whitespace </span><span class="s0">import </span><span class="s1">Filter</span>
+            <span class="s1">treewalker </span><span class="s3">= </span><span class="s1">Filter</span><span class="s2">(</span><span class="s1">treewalker</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">sanitize</span><span class="s3">:</span>
+            <span class="s0">from </span><span class="s2">.</span><span class="s1">filters</span><span class="s2">.</span><span class="s1">sanitizer </span><span class="s0">import </span><span class="s1">Filter</span>
+            <span class="s1">treewalker </span><span class="s3">= </span><span class="s1">Filter</span><span class="s2">(</span><span class="s1">treewalker</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">omit_optional_tags</span><span class="s3">:</span>
+            <span class="s0">from </span><span class="s2">.</span><span class="s1">filters</span><span class="s2">.</span><span class="s1">optionaltags </span><span class="s0">import </span><span class="s1">Filter</span>
+            <span class="s1">treewalker </span><span class="s3">= </span><span class="s1">Filter</span><span class="s2">(</span><span class="s1">treewalker</span><span class="s2">)</span>
+
+        <span class="s0">for </span><span class="s1">token </span><span class="s0">in </span><span class="s1">treewalker</span><span class="s3">:</span>
+            <span class="s1">type </span><span class="s3">= </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;type&quot;</span><span class="s5">]</span>
+            <span class="s0">if </span><span class="s1">type </span><span class="s3">== </span><span class="s4">&quot;Doctype&quot;</span><span class="s3">:</span>
+                <span class="s1">doctype </span><span class="s3">= </span><span class="s4">&quot;&lt;!DOCTYPE %s&quot; </span><span class="s3">% </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;name&quot;</span><span class="s5">]</span>
+
+                <span class="s0">if </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;publicId&quot;</span><span class="s5">]</span><span class="s3">:</span>
+                    <span class="s1">doctype </span><span class="s3">+= </span><span class="s4">' PUBLIC &quot;%s&quot;' </span><span class="s3">% </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;publicId&quot;</span><span class="s5">]</span>
+                <span class="s0">elif </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;systemId&quot;</span><span class="s5">]</span><span class="s3">:</span>
+                    <span class="s1">doctype </span><span class="s3">+= </span><span class="s4">&quot; SYSTEM&quot;</span>
+                <span class="s0">if </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;systemId&quot;</span><span class="s5">]</span><span class="s3">:</span>
+                    <span class="s0">if </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;systemId&quot;</span><span class="s5">]</span><span class="s2">.</span><span class="s1">find</span><span class="s2">(</span><span class="s4">'&quot;'</span><span class="s2">) </span><span class="s3">&gt;= </span><span class="s6">0</span><span class="s3">:</span>
+                        <span class="s0">if </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;systemId&quot;</span><span class="s5">]</span><span class="s2">.</span><span class="s1">find</span><span class="s2">(</span><span class="s4">&quot;'&quot;</span><span class="s2">) </span><span class="s3">&gt;= </span><span class="s6">0</span><span class="s3">:</span>
+                            <span class="s1">self</span><span class="s2">.</span><span class="s1">serializeError</span><span class="s2">(</span><span class="s4">&quot;System identifier contains both single and double quote characters&quot;</span><span class="s2">)</span>
+                        <span class="s1">quote_char </span><span class="s3">= </span><span class="s4">&quot;'&quot;</span>
+                    <span class="s0">else</span><span class="s3">:</span>
+                        <span class="s1">quote_char </span><span class="s3">= </span><span class="s4">'&quot;'</span>
+                    <span class="s1">doctype </span><span class="s3">+= </span><span class="s4">&quot; %s%s%s&quot; </span><span class="s3">% </span><span class="s2">(</span><span class="s1">quote_char</span><span class="s2">, </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;systemId&quot;</span><span class="s5">]</span><span class="s2">, </span><span class="s1">quote_char</span><span class="s2">)</span>
+
+                <span class="s1">doctype </span><span class="s3">+= </span><span class="s4">&quot;&gt;&quot;</span>
+                <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s1">doctype</span><span class="s2">)</span>
+
+            <span class="s0">elif </span><span class="s1">type </span><span class="s0">in </span><span class="s2">(</span><span class="s4">&quot;Characters&quot;</span><span class="s2">, </span><span class="s4">&quot;SpaceCharacters&quot;</span><span class="s2">)</span><span class="s3">:</span>
+                <span class="s0">if </span><span class="s1">type </span><span class="s3">== </span><span class="s4">&quot;SpaceCharacters&quot; </span><span class="s0">or </span><span class="s1">in_cdata</span><span class="s3">:</span>
+                    <span class="s0">if </span><span class="s1">in_cdata </span><span class="s0">and </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;data&quot;</span><span class="s5">]</span><span class="s2">.</span><span class="s1">find</span><span class="s2">(</span><span class="s4">&quot;&lt;/&quot;</span><span class="s2">) </span><span class="s3">&gt;= </span><span class="s6">0</span><span class="s3">:</span>
+                        <span class="s1">self</span><span class="s2">.</span><span class="s1">serializeError</span><span class="s2">(</span><span class="s4">&quot;Unexpected &lt;/ in CDATA&quot;</span><span class="s2">)</span>
+                    <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encode</span><span class="s2">(</span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;data&quot;</span><span class="s5">]</span><span class="s2">)</span>
+                <span class="s0">else</span><span class="s3">:</span>
+                    <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encode</span><span class="s2">(</span><span class="s1">escape</span><span class="s2">(</span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;data&quot;</span><span class="s5">]</span><span class="s2">))</span>
+
+            <span class="s0">elif </span><span class="s1">type </span><span class="s0">in </span><span class="s2">(</span><span class="s4">&quot;StartTag&quot;</span><span class="s2">, </span><span class="s4">&quot;EmptyTag&quot;</span><span class="s2">)</span><span class="s3">:</span>
+                <span class="s1">name </span><span class="s3">= </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;name&quot;</span><span class="s5">]</span>
+                <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s4">&quot;&lt;%s&quot; </span><span class="s3">% </span><span class="s1">name</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">name </span><span class="s0">in </span><span class="s1">rcdataElements </span><span class="s0">and not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">escape_rcdata</span><span class="s3">:</span>
+                    <span class="s1">in_cdata </span><span class="s3">= </span><span class="s0">True</span>
+                <span class="s0">elif </span><span class="s1">in_cdata</span><span class="s3">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">serializeError</span><span class="s2">(</span><span class="s4">&quot;Unexpected child element of a CDATA element&quot;</span><span class="s2">)</span>
+                <span class="s0">for </span><span class="s2">(</span><span class="s1">_</span><span class="s2">, </span><span class="s1">attr_name</span><span class="s2">), </span><span class="s1">attr_value </span><span class="s0">in </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;data&quot;</span><span class="s5">]</span><span class="s2">.</span><span class="s1">items</span><span class="s2">()</span><span class="s3">:</span>
+                    <span class="s7"># TODO: Add namespace support here</span>
+                    <span class="s1">k </span><span class="s3">= </span><span class="s1">attr_name</span>
+                    <span class="s1">v </span><span class="s3">= </span><span class="s1">attr_value</span>
+                    <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s4">' '</span><span class="s2">)</span>
+
+                    <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s1">k</span><span class="s2">)</span>
+                    <span class="s0">if not </span><span class="s1">self</span><span class="s2">.</span><span class="s1">minimize_boolean_attributes </span><span class="s0">or </span><span class="s1">\</span>
+                        <span class="s2">(</span><span class="s1">k </span><span class="s0">not in </span><span class="s1">booleanAttributes</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s1">name</span><span class="s2">, </span><span class="s1">tuple</span><span class="s2">()) </span><span class="s0">and</span>
+                         <span class="s1">k </span><span class="s0">not in </span><span class="s1">booleanAttributes</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s4">&quot;&quot;</span><span class="s2">, </span><span class="s1">tuple</span><span class="s2">()))</span><span class="s3">:</span>
+                        <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s4">&quot;=&quot;</span><span class="s2">)</span>
+                        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">quote_attr_values </span><span class="s3">== </span><span class="s4">&quot;always&quot; </span><span class="s0">or </span><span class="s1">len</span><span class="s2">(</span><span class="s1">v</span><span class="s2">) </span><span class="s3">== </span><span class="s6">0</span><span class="s3">:</span>
+                            <span class="s1">quote_attr </span><span class="s3">= </span><span class="s0">True</span>
+                        <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">quote_attr_values </span><span class="s3">== </span><span class="s4">&quot;spec&quot;</span><span class="s3">:</span>
+                            <span class="s1">quote_attr </span><span class="s3">= </span><span class="s1">_quoteAttributeSpec</span><span class="s2">.</span><span class="s1">search</span><span class="s2">(</span><span class="s1">v</span><span class="s2">) </span><span class="s0">is not None</span>
+                        <span class="s0">elif </span><span class="s1">self</span><span class="s2">.</span><span class="s1">quote_attr_values </span><span class="s3">== </span><span class="s4">&quot;legacy&quot;</span><span class="s3">:</span>
+                            <span class="s1">quote_attr </span><span class="s3">= </span><span class="s1">_quoteAttributeLegacy</span><span class="s2">.</span><span class="s1">search</span><span class="s2">(</span><span class="s1">v</span><span class="s2">) </span><span class="s0">is not None</span>
+                        <span class="s0">else</span><span class="s3">:</span>
+                            <span class="s0">raise </span><span class="s1">ValueError</span><span class="s2">(</span><span class="s4">&quot;quote_attr_values must be one of: &quot;</span>
+                                             <span class="s4">&quot;'always', 'spec', or 'legacy'&quot;</span><span class="s2">)</span>
+                        <span class="s1">v </span><span class="s3">= </span><span class="s1">v</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">&quot;&amp;&quot;</span><span class="s2">, </span><span class="s4">&quot;&amp;amp;&quot;</span><span class="s2">)</span>
+                        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">escape_lt_in_attrs</span><span class="s3">:</span>
+                            <span class="s1">v </span><span class="s3">= </span><span class="s1">v</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">&quot;&lt;&quot;</span><span class="s2">, </span><span class="s4">&quot;&amp;lt;&quot;</span><span class="s2">)</span>
+                        <span class="s0">if </span><span class="s1">quote_attr</span><span class="s3">:</span>
+                            <span class="s1">quote_char </span><span class="s3">= </span><span class="s1">self</span><span class="s2">.</span><span class="s1">quote_char</span>
+                            <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">use_best_quote_char</span><span class="s3">:</span>
+                                <span class="s0">if </span><span class="s4">&quot;'&quot; </span><span class="s0">in </span><span class="s1">v </span><span class="s0">and </span><span class="s4">'&quot;' </span><span class="s0">not in </span><span class="s1">v</span><span class="s3">:</span>
+                                    <span class="s1">quote_char </span><span class="s3">= </span><span class="s4">'&quot;'</span>
+                                <span class="s0">elif </span><span class="s4">'&quot;' </span><span class="s0">in </span><span class="s1">v </span><span class="s0">and </span><span class="s4">&quot;'&quot; </span><span class="s0">not in </span><span class="s1">v</span><span class="s3">:</span>
+                                    <span class="s1">quote_char </span><span class="s3">= </span><span class="s4">&quot;'&quot;</span>
+                            <span class="s0">if </span><span class="s1">quote_char </span><span class="s3">== </span><span class="s4">&quot;'&quot;</span><span class="s3">:</span>
+                                <span class="s1">v </span><span class="s3">= </span><span class="s1">v</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">&quot;'&quot;</span><span class="s2">, </span><span class="s4">&quot;&amp;#39;&quot;</span><span class="s2">)</span>
+                            <span class="s0">else</span><span class="s3">:</span>
+                                <span class="s1">v </span><span class="s3">= </span><span class="s1">v</span><span class="s2">.</span><span class="s1">replace</span><span class="s2">(</span><span class="s4">'&quot;'</span><span class="s2">, </span><span class="s4">&quot;&amp;quot;&quot;</span><span class="s2">)</span>
+                            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s1">quote_char</span><span class="s2">)</span>
+                            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encode</span><span class="s2">(</span><span class="s1">v</span><span class="s2">)</span>
+                            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s1">quote_char</span><span class="s2">)</span>
+                        <span class="s0">else</span><span class="s3">:</span>
+                            <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encode</span><span class="s2">(</span><span class="s1">v</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">name </span><span class="s0">in </span><span class="s1">voidElements </span><span class="s0">and </span><span class="s1">self</span><span class="s2">.</span><span class="s1">use_trailing_solidus</span><span class="s3">:</span>
+                    <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">space_before_trailing_solidus</span><span class="s3">:</span>
+                        <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s4">&quot; /&quot;</span><span class="s2">)</span>
+                    <span class="s0">else</span><span class="s3">:</span>
+                        <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s4">&quot;/&quot;</span><span class="s2">)</span>
+                <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encode</span><span class="s2">(</span><span class="s4">&quot;&gt;&quot;</span><span class="s2">)</span>
+
+            <span class="s0">elif </span><span class="s1">type </span><span class="s3">== </span><span class="s4">&quot;EndTag&quot;</span><span class="s3">:</span>
+                <span class="s1">name </span><span class="s3">= </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;name&quot;</span><span class="s5">]</span>
+                <span class="s0">if </span><span class="s1">name </span><span class="s0">in </span><span class="s1">rcdataElements</span><span class="s3">:</span>
+                    <span class="s1">in_cdata </span><span class="s3">= </span><span class="s0">False</span>
+                <span class="s0">elif </span><span class="s1">in_cdata</span><span class="s3">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">serializeError</span><span class="s2">(</span><span class="s4">&quot;Unexpected child element of a CDATA element&quot;</span><span class="s2">)</span>
+                <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s4">&quot;&lt;/%s&gt;&quot; </span><span class="s3">% </span><span class="s1">name</span><span class="s2">)</span>
+
+            <span class="s0">elif </span><span class="s1">type </span><span class="s3">== </span><span class="s4">&quot;Comment&quot;</span><span class="s3">:</span>
+                <span class="s1">data </span><span class="s3">= </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;data&quot;</span><span class="s5">]</span>
+                <span class="s0">if </span><span class="s1">data</span><span class="s2">.</span><span class="s1">find</span><span class="s2">(</span><span class="s4">&quot;--&quot;</span><span class="s2">) </span><span class="s3">&gt;= </span><span class="s6">0</span><span class="s3">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">serializeError</span><span class="s2">(</span><span class="s4">&quot;Comment contains --&quot;</span><span class="s2">)</span>
+                <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s4">&quot;&lt;!--%s--&gt;&quot; </span><span class="s3">% </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;data&quot;</span><span class="s5">]</span><span class="s2">)</span>
+
+            <span class="s0">elif </span><span class="s1">type </span><span class="s3">== </span><span class="s4">&quot;Entity&quot;</span><span class="s3">:</span>
+                <span class="s1">name </span><span class="s3">= </span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;name&quot;</span><span class="s5">]</span>
+                <span class="s1">key </span><span class="s3">= </span><span class="s1">name </span><span class="s3">+ </span><span class="s4">&quot;;&quot;</span>
+                <span class="s0">if </span><span class="s1">key </span><span class="s0">not in </span><span class="s1">entities</span><span class="s3">:</span>
+                    <span class="s1">self</span><span class="s2">.</span><span class="s1">serializeError</span><span class="s2">(</span><span class="s4">&quot;Entity %s not recognized&quot; </span><span class="s3">% </span><span class="s1">name</span><span class="s2">)</span>
+                <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">resolve_entities </span><span class="s0">and </span><span class="s1">key </span><span class="s0">not in </span><span class="s1">xmlEntities</span><span class="s3">:</span>
+                    <span class="s1">data </span><span class="s3">= </span><span class="s1">entities</span><span class="s5">[</span><span class="s1">key</span><span class="s5">]</span>
+                <span class="s0">else</span><span class="s3">:</span>
+                    <span class="s1">data </span><span class="s3">= </span><span class="s4">&quot;&amp;%s;&quot; </span><span class="s3">% </span><span class="s1">name</span>
+                <span class="s0">yield </span><span class="s1">self</span><span class="s2">.</span><span class="s1">encodeStrict</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span>
+
+            <span class="s0">else</span><span class="s3">:</span>
+                <span class="s1">self</span><span class="s2">.</span><span class="s1">serializeError</span><span class="s2">(</span><span class="s1">token</span><span class="s5">[</span><span class="s4">&quot;data&quot;</span><span class="s5">]</span><span class="s2">)</span>
+
+    <span class="s0">def </span><span class="s1">render</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">treewalker</span><span class="s2">, </span><span class="s1">encoding</span><span class="s3">=</span><span class="s0">None</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s7">&quot;&quot;&quot;Serializes the stream from the treewalker into a string 
+ 
+        :arg treewalker: the treewalker to serialize 
+ 
+        :arg encoding: the string encoding to use 
+ 
+        :returns: the serialized tree 
+ 
+        Example: 
+ 
+        &gt;&gt;&gt; from html5lib import parse, getTreeWalker 
+        &gt;&gt;&gt; from html5lib.serializer import HTMLSerializer 
+        &gt;&gt;&gt; token_stream = parse('&lt;html&gt;&lt;body&gt;Hi!&lt;/body&gt;&lt;/html&gt;') 
+        &gt;&gt;&gt; walker = getTreeWalker('etree') 
+        &gt;&gt;&gt; serializer = HTMLSerializer(omit_optional_tags=False) 
+        &gt;&gt;&gt; serializer.render(walker(token_stream)) 
+        '&lt;html&gt;&lt;head&gt;&lt;/head&gt;&lt;body&gt;Hi!&lt;/body&gt;&lt;/html&gt;' 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">encoding</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s4">b&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">list</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">serialize</span><span class="s2">(</span><span class="s1">treewalker</span><span class="s2">, </span><span class="s1">encoding</span><span class="s2">)))</span>
+        <span class="s0">else</span><span class="s3">:</span>
+            <span class="s0">return </span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s1">join</span><span class="s2">(</span><span class="s1">list</span><span class="s2">(</span><span class="s1">self</span><span class="s2">.</span><span class="s1">serialize</span><span class="s2">(</span><span class="s1">treewalker</span><span class="s2">)))</span>
+
+    <span class="s0">def </span><span class="s1">serializeError</span><span class="s2">(</span><span class="s1">self</span><span class="s2">, </span><span class="s1">data</span><span class="s3">=</span><span class="s4">&quot;XXX ERROR MESSAGE NEEDED&quot;</span><span class="s2">)</span><span class="s3">:</span>
+        <span class="s7"># XXX The idea is to make data mandatory.</span>
+        <span class="s1">self</span><span class="s2">.</span><span class="s1">errors</span><span class="s2">.</span><span class="s1">append</span><span class="s2">(</span><span class="s1">data</span><span class="s2">)</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s2">.</span><span class="s1">strict</span><span class="s3">:</span>
+            <span class="s0">raise </span><span class="s1">SerializeError</span>
+
+
+<span class="s0">class </span><span class="s1">SerializeError</span><span class="s2">(</span><span class="s1">Exception</span><span class="s2">)</span><span class="s3">:</span>
+    <span class="s7">&quot;&quot;&quot;Error in serialized tree&quot;&quot;&quot;</span>
+    <span class="s0">pass</span>
+</pre>
+</body>
+</html>
